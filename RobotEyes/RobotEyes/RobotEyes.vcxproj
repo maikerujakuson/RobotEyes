@@ -88,6 +88,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>C:\OpenCV3\build\install\include;C:\Program Files %28x86%29\PCL 1.8.0\3rdParty\VTK\include\vtk-7.0;C:\Program Files %28x86%29\PCL 1.8.0\3rdParty\Qhull\include\libqhullcpp;C:\Program Files %28x86%29\PCL 1.8.0\3rdParty\FLANN\include;C:\Program Files %28x86%29\PCL 1.8.0\3rdParty\Eigen\include;C:\Program Files %28x86%29\PCL 1.8.0\3rdParty\Boost\include\boost-1_61;C:\Program Files %28x86%29\PCL 1.8.0\include\pcl-1.8;C:\Program Files %28x86%29\OpenNI2\Include;C:\Program Files %28x86%29\PrimeSense\NiTE2\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
