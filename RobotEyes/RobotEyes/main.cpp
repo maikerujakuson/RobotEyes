@@ -170,6 +170,5 @@ int main()
 		std::cout << openni::OpenNI::getExtendedError() << std::endl;
 	}
 
-
 	return 0;
 }
