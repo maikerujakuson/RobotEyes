@@ -91,8 +91,8 @@ int main()
 
 	std::cout << "Hello Omanman" << std::endl;
 
-	//SimpleOpenNIViewer v;
-	//v.run();
+	SimpleOpenNIViewer v;
+	v.run();
 
 	try {
 		openni::OpenNI::initialize();
