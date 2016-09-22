@@ -53,11 +53,10 @@ public:
 
 int main()
 {
-
 	std::cout << "Hello Omanman" << std::endl;
 
-	SimpleOpenNIViewer v;
-	v.run();
+	//SimpleOpenNIViewer v;
+	//v.run();
 
 	Kinect kinect;
 	while (1)
