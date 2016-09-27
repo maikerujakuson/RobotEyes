@@ -2,7 +2,7 @@
 
 Kinect::Kinect() {
 	openni::OpenNI::initialize();
-	openni::Device device;
+
 	if (device.open(openni::ANY_DEVICE) != openni::STATUS_OK) {
 		//return -1;
 	}

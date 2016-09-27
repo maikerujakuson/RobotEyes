@@ -17,6 +17,7 @@ public:
 	virtual cv::Mat getDepthImage(void);
 
 private:
+	openni::Device device;
 	int changedIndex = 0;
 	int changedIndex2 = 0;
 	cv::Mat colorImage;
