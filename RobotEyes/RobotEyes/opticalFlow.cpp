@@ -1,5 +1,8 @@
 #include "opticalFlow.h"
+
+cv::Mat OpticalFlow::prevGrayImage;
 bool pointTrackingFlag = false;
+
 cv::Point2f currentPoint;
 
 // Function to detect mouse events
@@ -16,7 +19,8 @@ void onMouse(int event, int x, int y, int, void*)
 	}
 }
 
-std::vector<std::vector<cv::Point2f>> OpticalFlow::getTrackingPositions(cv::Mat image, std::vector<cv::Point2f> trackingPoints[2])
+// Function to calculate the positions of trackingPoints
+std::vector<std::vector<cv::Point2f>> OpticalFlow::getTrackingPositions(cv::Mat image, std::vector<std::vector<cv::Point2f>> trackingPoints)
 {
 	// Convert the image to grayscale
 	cv::cvtColor(image, curGrayImage, cv::COLOR_BGR2GRAY);
@@ -24,7 +28,7 @@ std::vector<std::vector<cv::Point2f>> OpticalFlow::getTrackingPositions(cv::Mat 
 	// Check if there are points to track
 	if (!trackingPoints[0].empty())
 	{
-		// Status vector to indicate whether the flow for the corresponding features has been found
+		// Status vector to indicate whether the flow for the corresponding features has been found(1)
 		std::vector<uchar> statusVector;
 
 		// Error vector to indicate the error for the corresponding feature
@@ -92,4 +96,6 @@ std::vector<std::vector<cv::Point2f>> OpticalFlow::getTrackingPositions(cv::Mat 
 
 	// Swap the images to update previous image to current image
 	cv::swap(prevGrayImage, curGrayImage);
+
+	return trackingPoints;
 }

@@ -15,11 +15,12 @@ public:
 	};
 	cv::Point2f currentPoint;
 	bool pointTrackingFlag = false;
-	std::vector<std::vector<cv::Point2f>> getTrackingPositions(cv::Mat image, std::vector<cv::Point2f> trackingPOints[2]);
+	std::vector<std::vector<cv::Point2f>> getTrackingPositions(cv::Mat image, std::vector<std::vector<cv::Point2f>> trackingPOints);
 	/*void onMouse(int event, int x, int y, int, void*);*/
 
 private:
-	cv::Mat prevGrayImage, curGrayImage, frame;
+	static cv::Mat prevGrayImage;
+	cv::Mat curGrayImage, frame;
 	cv::Size windowSize;
 	// Maximum number of points that you want to track
 	const int maxNumPoints = 200;
