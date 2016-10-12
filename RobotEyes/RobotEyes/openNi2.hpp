@@ -1,5 +1,5 @@
-#ifndef __OPENNI2_H_INCLUDED__
-#define __OPENNI2_H_INCLUDED__
+#ifndef __OPENNI2_HPP_INCLUDED__
+#define __OPENNI2_HPP_INCLUDED__
 
 #include <iostream>
 #include <vector>
@@ -34,13 +34,10 @@
 
 #include <opencv2\opencv.hpp>
 
-
-
-template <typename PointType>
 class OpenNI2Viewer
 {
 public:
-	typedef pcl::PointCloud<PointType> Cloud;
+	typedef pcl::PointCloud<pcl::PointXYZRGBA> Cloud;
 	typedef typename Cloud::ConstPtr CloudConstPtr;
 
 	OpenNI2Viewer(pcl::io::OpenNI2Grabber& grabber)
@@ -67,7 +64,7 @@ public:
 	boost::shared_ptr<pcl::io::openni2::Image> image_;
 	unsigned char* rgb_data_;
 	unsigned rgb_data_size_;
-}
+};
 
 
-#endif // !__OPENNI2_H_INCLUDED__
+#endif // !__OPENNI2_HPP_INCLUDED__

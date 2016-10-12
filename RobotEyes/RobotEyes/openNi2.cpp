@@ -1,14 +1,11 @@
-#include "openNi2.h"
+#include "openNi2.hpp" 
 
-template <typename PointType>
 void OpenNI2Viewer::cloud_callback(const OpenNI2Viewer::CloudConstPtr& cloud)
 {
 	boost::mutex::scoped_lock lock(cloud_mutex_);
 	cloud_ = cloud;
-	pcl::PointCloud<OpenNI2Viewer::Cloud> segmented_cloud(*cloud);
 }
 
-template <typename PointType>
 void OpenNI2Viewer::image_callback(const boost::shared_ptr<pcl::io::openni2::Image>& image)
 {
 	boost::mutex::scoped_lock lock(image_mutex_);
@@ -33,7 +30,6 @@ void OpenNI2Viewer::image_callback(const boost::shared_ptr<pcl::io::openni2::Ima
 	cv::waitKey(30);
 }
 
-template <typename PointType>
 void OpenNI2Viewer::keyboard_callback(const pcl::visualization::KeyboardEvent& event, void*)
 {
 	if (event.getKeyCode())
@@ -46,7 +42,6 @@ void OpenNI2Viewer::keyboard_callback(const pcl::visualization::KeyboardEvent& e
 		cout << " released" << endl;
 }
 
-template <typename PointType>
 void OpenNI2Viewer::mouse_callback(const pcl::visualization::MouseEvent& mouse_event, void*)
 {
 	if (mouse_event.getType() == pcl::visualization::MouseEvent::MouseButtonPress && mouse_event.getButton() == pcl::visualization::MouseEvent::LeftButton)
@@ -55,7 +50,6 @@ void OpenNI2Viewer::mouse_callback(const pcl::visualization::MouseEvent& mouse_e
 	}
 }
 
-template <typename PointType>
 void OpenNI2Viewer::run()
 {
 	cloud_viewer_->registerMouseCallback(&OpenNI2Viewer::mouse_callback, *this);
@@ -134,8 +128,6 @@ void OpenNI2Viewer::run()
 			else
 				image_viewer_->addRGBImage(rgb_data_, image->getWidth(), image->getHeight());
 			image_viewer_->spinOnce();
-			//cv::waitKey(0);
-
 		}
 	}
 
