@@ -1,16 +1,28 @@
-#include "openNi2.hpp" 
+#include "frame.hpp" 
+
+// include file for plane detection
+#include <pcl/ModelCoefficients.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
+#include <pcl/sample_consensus/method_types.h>
+#include <pcl/sample_consensus/model_types.h>
+#include <pcl/segmentation/sac_segmentation.h>
 
 // Function to execute cloud processes in one frame 
-void OpenNI2Viewer::cloud_callback(const OpenNI2Viewer::CloudConstPtr& cloud)
+void 
+OpenNI2Viewer::cloud_callback(const OpenNI2Viewer::CloudConstPtr& cloud)
 {
 	// Lock the cloud_mutex until the scoped is exited	
 	boost::mutex::scoped_lock lock(cloud_mutex_);
+	
+
 	// Set streamed cloud to the member cloud
 	cloud_ = cloud;
 }
 
 // Function to execute processes at one frame color image 
-void OpenNI2Viewer::image_callback(const boost::shared_ptr<pcl::io::openni2::Image>& image)
+void 
+OpenNI2Viewer::image_callback(const boost::shared_ptr<pcl::io::openni2::Image>& image)
 {
 	// Lock the image_mutex until the scoped is exited  	
 	boost::mutex::scoped_lock lock(image_mutex_);
@@ -40,7 +52,8 @@ void OpenNI2Viewer::image_callback(const boost::shared_ptr<pcl::io::openni2::Ima
 }
 
 // Function to execute processes when receiving keyboard inputs
-void OpenNI2Viewer::keyboard_callback(const pcl::visualization::KeyboardEvent& event, void*)
+void 
+OpenNI2Viewer::keyboard_callback(const pcl::visualization::KeyboardEvent& event, void*)
 {
 	if (event.getKeyCode())
 		cout << "the key \'" << event.getKeyCode() << "\' (" << event.getKeyCode() << ") was";
@@ -53,7 +66,8 @@ void OpenNI2Viewer::keyboard_callback(const pcl::visualization::KeyboardEvent& e
 }
 
 //	Function to execute processes when mouse events happen 
-void OpenNI2Viewer::mouse_callback(const pcl::visualization::MouseEvent& mouse_event, void*)
+void 
+OpenNI2Viewer::mouse_callback(const pcl::visualization::MouseEvent& mouse_event, void*)
 {
 	if (mouse_event.getType() == pcl::visualization::MouseEvent::MouseButtonPress && mouse_event.getButton() == pcl::visualization::MouseEvent::LeftButton)
 	{
@@ -62,7 +76,8 @@ void OpenNI2Viewer::mouse_callback(const pcl::visualization::MouseEvent& mouse_e
 }
 
 // 
-void OpenNI2Viewer::run()
+void 
+OpenNI2Viewer::run()
 {
 	cloud_viewer_->registerMouseCallback(&OpenNI2Viewer::mouse_callback, *this);
 	cloud_viewer_->registerKeyboardCallback(&OpenNI2Viewer::keyboard_callback, *this);

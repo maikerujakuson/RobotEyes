@@ -1,14 +1,6 @@
 #include <iostream>
 #include <vector>
 
-#define MEASURE_FUNCTION_TIME
-
-#include <pcl\common\time.h>
-#include <pcl\common\angles.h>
-#include <pcl\console\print.h>
-#include <pcl\console\parse.h>
-#include <pcl\console\time.h>
-
 #include <pcl\io\pcd_io.h>
 #include <pcl\io\openni2_grabber.h>
 #include <pcl\io\openni2\openni.h>
@@ -33,9 +25,7 @@
 
 #include "camera.h"
 #include "opticalFlow.h"
-#include "openNi2.hpp"
-
-typedef boost::chrono::high_resolution_clock HRClock;
+#include "frame.hpp"
 
 // Create the PCLVisualizer object
 boost::shared_ptr<pcl::visualization::PCLVisualizer> cld;

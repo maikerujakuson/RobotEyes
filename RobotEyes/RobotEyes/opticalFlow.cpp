@@ -6,7 +6,8 @@ bool pointTrackingFlag = false;
 cv::Point2f currentPoint;
 
 // Function to detect mouse events
-void onMouse(int event, int x, int y, int, void*)
+void 
+onMouse(int event, int x, int y, int, void*)
 {
 	// Detect the mouse button down event
 	if (event == CV_EVENT_LBUTTONDOWN)
@@ -20,7 +21,8 @@ void onMouse(int event, int x, int y, int, void*)
 }
 
 // Function to calculate the positions of trackingPoints
-std::vector<std::vector<cv::Point2f>> OpticalFlow::getTrackingPositions(cv::Mat image, std::vector<std::vector<cv::Point2f>> trackingPoints)
+std::vector<std::vector<cv::Point2f>> 
+OpticalFlow::getTrackingPositions(cv::Mat image, std::vector<std::vector<cv::Point2f>> trackingPoints)
 {
 	// Convert the image to grayscale
 	cv::cvtColor(image, curGrayImage, cv::COLOR_BGR2GRAY);

@@ -1,5 +1,5 @@
-#ifndef __OPENNI2_HPP_INCLUDED__
-#define __OPENNI2_HPP_INCLUDED__
+#ifndef __FRAME_HPP_INCLUDED__
+#define __FRAME_HPP_INCLUDED__
 
 #include <iostream>
 #include <vector>
@@ -66,5 +66,4 @@ public:
 	unsigned rgb_data_size_;
 };
 
-
-#endif // !__OPENNI2_HPP_INCLUDED__
+#endif // !__FRAME_HPP_INCLUDED__
