@@ -1,18 +1,26 @@
 #include "openNi2.hpp" 
 
+// Function to execute cloud processes in one frame 
 void OpenNI2Viewer::cloud_callback(const OpenNI2Viewer::CloudConstPtr& cloud)
 {
+	// Lock the cloud_mutex until the scoped is exited	
 	boost::mutex::scoped_lock lock(cloud_mutex_);
+	// Set streamed cloud to the member cloud
 	cloud_ = cloud;
 }
 
+// Function to execute processes at one frame color image 
 void OpenNI2Viewer::image_callback(const boost::shared_ptr<pcl::io::openni2::Image>& image)
 {
+	// Lock the image_mutex until the scoped is exited  	
 	boost::mutex::scoped_lock lock(image_mutex_);
+	// Set streamed image to the member image
 	image_ = image;
 
+	// Check if the encoding of image is same as the one of Openni2 RGB
 	if (image->getEncoding() != pcl::io::openni2::Image::RGB)
 	{
+		// Use rgb_data insted of image_	
 		if (rgb_data_size_ < image->getWidth() * image->getHeight())
 		{
 			if (rgb_data_)
@@ -23,13 +31,15 @@ void OpenNI2Viewer::image_callback(const boost::shared_ptr<pcl::io::openni2::Ima
 		image_->fillRGB(image_->getWidth(), image_->getHeight(), rgb_data_);
 	}
 
-	cv::Mat C1 = cv::Mat(image_->getHeight(), image_->getWidth(), CV_8UC3);
-	image_->fillRGB(C1.cols, C1.rows, C1.data, C1.step);
-	cv::cvtColor(C1, C1, CV_RGB2BGR);
-	cv::imshow("color image", C1);
+	// Set streamed color image to color
+	cv::Mat color = cv::Mat(image_->getHeight(), image_->getWidth(), CV_8UC3);
+	image_->fillRGB(color.cols, color.rows, color.data, color.step);
+	cv::cvtColor(color, color, CV_RGB2BGR);
+	cv::imshow("color image", color);
 	cv::waitKey(30);
 }
 
+// Function to execute processes when receiving keyboard inputs
 void OpenNI2Viewer::keyboard_callback(const pcl::visualization::KeyboardEvent& event, void*)
 {
 	if (event.getKeyCode())
@@ -42,6 +52,7 @@ void OpenNI2Viewer::keyboard_callback(const pcl::visualization::KeyboardEvent& e
 		cout << " released" << endl;
 }
 
+//	Function to execute processes when mouse events happen 
 void OpenNI2Viewer::mouse_callback(const pcl::visualization::MouseEvent& mouse_event, void*)
 {
 	if (mouse_event.getType() == pcl::visualization::MouseEvent::MouseButtonPress && mouse_event.getButton() == pcl::visualization::MouseEvent::LeftButton)
@@ -50,6 +61,7 @@ void OpenNI2Viewer::mouse_callback(const pcl::visualization::MouseEvent& mouse_e
 	}
 }
 
+// 
 void OpenNI2Viewer::run()
 {
 	cloud_viewer_->registerMouseCallback(&OpenNI2Viewer::mouse_callback, *this);
