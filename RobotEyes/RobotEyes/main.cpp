@@ -25,7 +25,7 @@
 
 #include "camera.h"
 #include "opticalFlow.h"
-#include "frame.hpp"
+#include "frame_process.hpp"
 
 // Create the PCLVisualizer object
 boost::shared_ptr<pcl::visualization::PCLVisualizer> cld;
@@ -47,7 +47,7 @@ main(int argc, char** argv)
 
 	pcl::io::OpenNI2Grabber grabber(device_id, depth_mode, image_mode);
 
-	OpenNI2Viewer openni_viewer(grabber);
+	FrameProcess openni_viewer(grabber);
 	openni_viewer.run();
 
 	return (0);

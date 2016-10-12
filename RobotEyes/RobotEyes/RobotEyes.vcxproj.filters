@@ -24,7 +24,7 @@
     <ClCompile Include="opticalFlow.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="frame.cpp">
+    <ClCompile Include="frame_process.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -35,7 +35,7 @@
     <ClInclude Include="opticalFlow.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="frame.hpp">
+    <ClInclude Include="frame_process.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

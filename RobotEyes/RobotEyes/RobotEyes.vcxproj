@@ -154,12 +154,12 @@
   <ItemGroup>
     <ClCompile Include="camera.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="frame.cpp" />
+    <ClCompile Include="frame_process.cpp" />
     <ClCompile Include="opticalFlow.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="camera.h" />
-    <ClInclude Include="frame.hpp" />
+    <ClInclude Include="frame_process.hpp" />
     <ClInclude Include="opticalFlow.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

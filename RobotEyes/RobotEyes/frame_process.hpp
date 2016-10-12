@@ -1,5 +1,5 @@
-#ifndef __FRAME_HPP_INCLUDED__
-#define __FRAME_HPP_INCLUDED__
+#ifndef __FRAME_PROCESS_HPP_INCLUDED__
+#define __FRAME_PROCESS_HPP_INCLUDED__
 
 #include <iostream>
 #include <vector>
@@ -34,13 +34,13 @@
 
 #include <opencv2\opencv.hpp>
 
-class OpenNI2Viewer
+class FrameProcess
 {
 public:
 	typedef pcl::PointCloud<pcl::PointXYZRGBA> Cloud;
 	typedef typename Cloud::ConstPtr CloudConstPtr;
 
-	OpenNI2Viewer(pcl::io::OpenNI2Grabber& grabber)
+	FrameProcess(pcl::io::OpenNI2Grabber& grabber)
 		: cloud_viewer_(new pcl::visualization::PCLVisualizer("PCL OpenNI2 cloud"))
 		, image_viewer_()
 		, grabber_(grabber)
@@ -66,4 +66,4 @@ public:
 	unsigned rgb_data_size_;
 };
 
-#endif // !__FRAME_HPP_INCLUDED__
+#endif // !__FRAME_PROCESS_HPP_INCLUDED__
