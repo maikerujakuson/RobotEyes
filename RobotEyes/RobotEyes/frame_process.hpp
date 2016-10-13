@@ -34,11 +34,13 @@
 
 #include <opencv2\opencv.hpp>
 
+
+typedef pcl::PointCloud<pcl::PointXYZRGBA> Cloud;
+typedef typename Cloud::ConstPtr CloudConstPtr;
 class FrameProcess
 {
 public:
-	typedef pcl::PointCloud<pcl::PointXYZRGBA> Cloud;
-	typedef typename Cloud::ConstPtr CloudConstPtr;
+
 
 	FrameProcess(pcl::io::OpenNI2Grabber& grabber)
 		: cloud_viewer_(new pcl::visualization::PCLVisualizer("PCL OpenNI2 cloud"))

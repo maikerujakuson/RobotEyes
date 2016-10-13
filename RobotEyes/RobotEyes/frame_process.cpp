@@ -11,6 +11,7 @@
 #include <pcl/filters/approximate_voxel_grid.h>
 #include <pcl/sample_consensus/method_types.h>
 #include <pcl/sample_consensus/model_types.h>
+#include <pcl/segmentation/sac_segmentation.h>  
 #include <pcl/search/pcl_search.h>
 #include <pcl/common/transforms.h>
 #include <boost/format.hpp>
@@ -26,14 +27,51 @@
 #include <pcl/tracking/nearest_pair_point_cloud_coherence.h>
 
 
+
+// Function t
+void 
+filterPassThrough(const CloudConstPtr &cloud, Cloud &result)
+{
+	pcl::PassThrough<pcl::PointXYZRGBA> pass;
+	pass.setFilterFieldName("z");
+	pass.setFilterLimits(0.0, 10.0);
+	pass.setKeepOrganized(false);
+	pass.setInputCloud(cloud);
+	pass.filter(result);
+}
+
+void 
+segmentate(pcl::PointCloud<pcl::PointXYZRGBA>& cloud, double threshould) {
+	pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
+	pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
+	// Create the segmentation object  
+	pcl::SACSegmentation<pcl::PointXYZRGBA> seg;
+	// Optional  
+	seg.setOptimizeCoefficients(true);
+	// Mandatory  
+	seg.setModelType(pcl::SACMODEL_PLANE);
+	seg.setMethodType(pcl::SAC_RANSAC);
+	seg.setDistanceThreshold(threshould);
+
+	seg.setInputCloud(cloud.makeShared());
+	seg.segment(*inliers, *coefficients);
+
+	for (size_t i = 0; i < inliers->indices.size(); ++i) {
+		cloud.points[inliers->indices[i]].r = 255;
+		cloud.points[inliers->indices[i]].g = 0;
+		cloud.points[inliers->indices[i]].b = 0;
+	}
+}
+
 // Function to execute user-defined cloud processes in one frame 
 void 
-FrameProcess::cloud_callback(const FrameProcess::CloudConstPtr& cloud)
+FrameProcess::cloud_callback(const CloudConstPtr& cloud)
 {
 	// Lock the cloud_mutex until the scoped is exited	
 	boost::mutex::scoped_lock lock(cloud_mutex_);
 	
-
+	
+	//filterPassThrough(cloud, filteredCloud);
 	// Set streamed cloud to the member cloud
 	cloud_ = cloud;
 }
@@ -121,7 +159,6 @@ FrameProcess::run()
 	{
 		boost::shared_ptr<pcl::io::openni2::Image> image;
 		CloudConstPtr cloud;
-
 		cloud_viewer_->spinOnce();
 
 		// See if we can get a cloud
@@ -130,6 +167,12 @@ FrameProcess::run()
 			cloud_.swap(cloud);
 			cloud_mutex_.unlock();
 		}
+
+		Cloud filteredCloud;
+		filterPassThrough(cloud, filteredCloud);
+		segmentate(filteredCloud, 0.1);
+		//boost::shared_ptr<Cloud> filtered(new Cloud(filteredCloud));
+		cloud = filteredCloud.makeShared();
 
 		if (cloud)
 		{
@@ -142,6 +185,7 @@ FrameProcess::run()
 
 			if (!cloud_viewer_->updatePointCloud(cloud, "OpenNICloud"))
 			{
+				//cloud_viewer_->addPointCloud(cloud, "OpenNICloud");
 				cloud_viewer_->addPointCloud(cloud, "OpenNICloud");
 				cloud_viewer_->resetCameraViewpoint("OpenNICloud");
 				cloud_viewer_->setCameraPosition(
