@@ -33,17 +33,17 @@ void
 filterPassThrough(const CloudConstPtr &cloud, Cloud &result)
 {
 	pcl::PassThrough<pcl::PointXYZRGBA> pass;
-	pass.setFilterFieldName("z");
-	pass.setFilterLimits(0.0, 10.0);
-	pass.setKeepOrganized(false);
+	//pass.setFilterFieldName("z");
+	//pass.setFilterLimits(0.0, 10.0);
+	//pass.setKeepOrganized(false);
 	pass.setInputCloud(cloud);
 	pass.filter(result);
 }
 
+pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
 void 
 segmentate(pcl::PointCloud<pcl::PointXYZRGBA>& cloud, double threshould) {
 	pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
-	pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
 	// Create the segmentation object  
 	pcl::SACSegmentation<pcl::PointXYZRGBA> seg;
 	// Optional  
@@ -74,6 +74,8 @@ FrameProcess::cloud_callback(const CloudConstPtr& cloud)
 	//filterPassThrough(cloud, filteredCloud);
 	// Set streamed cloud to the member cloud
 	cloud_ = cloud;
+	cout << cloud_->width << endl;
+	cout << cloud_->height << endl;
 }
 
 // Function to execute user-defined color image processes at one frame color image 
@@ -99,12 +101,7 @@ FrameProcess::image_callback(const boost::shared_ptr<pcl::io::openni2::Image>& i
 		image_->fillRGB(image_->getWidth(), image_->getHeight(), rgb_data_);
 	}
 
-	// Set streamed color image to color
-	cv::Mat color = cv::Mat(image_->getHeight(), image_->getWidth(), CV_8UC3);
-	image_->fillRGB(color.cols, color.rows, color.data, color.step);
-	cv::cvtColor(color, color, CV_RGB2BGR);
-	cv::imshow("color image", color);
-	cv::waitKey(30);
+
 }
 
 // Function to execute processes when receiving keyboard inputs
@@ -161,19 +158,23 @@ FrameProcess::run()
 		CloudConstPtr cloud;
 		cloud_viewer_->spinOnce();
 
+
 		// See if we can get a cloud
 		if (cloud_mutex_.try_lock())
 		{
 			cloud_.swap(cloud);
 			cloud_mutex_.unlock();
 		}
-
+		
+		//Cloud segmentedCloud(*cloud_);
+		//segmentate(segmentedCloud, 0.01);
 		Cloud filteredCloud;
 		filterPassThrough(cloud, filteredCloud);
-		segmentate(filteredCloud, 0.1);
-		//boost::shared_ptr<Cloud> filtered(new Cloud(filteredCloud));
+		segmentate(filteredCloud, 0.01);
+		//boost::shared_ptr<Cloud> filtered(new Cloud(segmentedCloud));
 		cloud = filteredCloud.makeShared();
-
+		//cout << cloud->width << endl;
+		//cout << cloud->height << endl;
 		if (cloud)
 		{
 			if (!cloud_init)
@@ -194,13 +195,34 @@ FrameProcess::run()
 					0, -1, 0);	// Up
 			}
 		}
-
 		// See if we can get an image
 		if (image_mutex_.try_lock())
 		{
 			image_.swap(image);
 			image_mutex_.unlock();
 		}
+
+		// Set streamed color image to color
+		cv::Mat color = cv::Mat(image->getHeight(), image->getWidth(), CV_8UC3);
+		image->fillRGB(color.cols, color.rows, color.data, color.step);
+		cv::cvtColor(color, color, CV_RGB2BGR);
+		int rows = color.rows;
+		int cols = color.cols;
+		//cout << rows * cols << endl;
+		for (size_t i = 0; i < inliers->indices.size(); ++i) {
+			//cout << inliers->indices[i] << endl;
+			int row = inliers->indices[i] / cols;
+			int col = inliers->indices[i] % cols;
+			//cout << ind << endl;
+			color.at<cv::Vec3b>(row,col)[0] = 0;
+			color.at<cv::Vec3b>(row,col)[1] = 0;
+			color.at<cv::Vec3b>(row,col)[2] = 0;
+		//	color.at<double>(1, inliers->indices[i]) = 0;
+		//	color.at<double>(2, inliers->indices[i]) = 0;
+		}
+		//cout << inliers->indices[0] << endl;
+		cv::imshow("color image", color);
+		cv::waitKey(30);
 
 
 		if (image)
