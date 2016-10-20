@@ -74,8 +74,6 @@ FrameProcess::cloud_callback(const CloudConstPtr& cloud)
 	//filterPassThrough(cloud, filteredCloud);
 	// Set streamed cloud to the member cloud
 	cloud_ = cloud;
-	cout << cloud_->width << endl;
-	cout << cloud_->height << endl;
 }
 
 // Function to execute user-defined color image processes at one frame color image 
@@ -201,6 +199,8 @@ FrameProcess::run()
 			image_.swap(image);
 			image_mutex_.unlock();
 		}
+		cout << cloud->height << endl;
+
 
 		// Set streamed color image to color
 		cv::Mat color = cv::Mat(image->getHeight(), image->getWidth(), CV_8UC3);

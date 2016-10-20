@@ -50,5 +50,12 @@ main(int argc, char** argv)
 	FrameProcess openni_viewer(grabber);
 	openni_viewer.run();
 
+	//cv::Mat depth, color;
+	//Kinect kinect;
+
+	//while (true) {
+	//	kinect.adjustDepthToColor();
+	//}
+
 	return (0);
 }

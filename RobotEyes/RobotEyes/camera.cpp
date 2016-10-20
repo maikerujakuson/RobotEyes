@@ -1,4 +1,8 @@
-#include"camera.h"
+#include "camera.h"
+#include <pcl\point_types.h>
+#include <pcl\io\pcd_io.h>
+#include <pcl\io\io.h>
+#include <pcl\visualization\cloud_viewer.h>
 
 Kinect::Kinect() {
 	openni::OpenNI::initialize();
@@ -6,6 +10,10 @@ Kinect::Kinect() {
 	if (device.open(openni::ANY_DEVICE) != openni::STATUS_OK) {
 		//return -1;
 	}
+	// Depth Ç∆ Color ÇÃÉtÉåÅ[ÉÄÇìØä˙Ç≥ÇπÇÈ
+	device.setDepthColorSyncEnabled(true);
+	//:w
+	device.setImageRegistrationMode(openni::IMAGE_REGISTRATION_DEPTH_TO_COLOR);
 
 	colorStream.create(device, openni::SENSOR_COLOR);
 	depthStream.create(device, openni::SENSOR_DEPTH);
@@ -62,4 +70,59 @@ cv::Mat Kinect::getDepthImage(void) {
 		}
 	}
 	return depthImage;
+}
+
+void Kinect::adjustDepthToColor()
+{
+	int x, y;
+	int colorX, colorY;
+	pcl::visualization::CloudViewer viewer("Cloud Viewer");
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr point_cloud_ptr(new pcl::PointCloud<pcl::PointXYZRGB>);
+	//pcl::io::loadPCDFile("raw_0.pcd", *point_cloud_ptr);
+	openni::VideoFrameRef depthFrame;
+	depthStream.readFrame(&depthFrame);
+	cv::Mat color, depth;
+	depth = this->getDepthImage();
+	color = this->getColorImage();
+		float X, Y, Z;
+		
+
+		//viewer.showCloud(point_cloud_ptr);
+		while (!viewer.wasStopped())
+		{
+			depth = this->getDepthImage();
+			color = this->getColorImage();
+			point_cloud_ptr->points.clear();
+			for (int i = 0; i < depth.rows; i++)
+			{
+				for (int j = 0; j < depth.cols; j++)
+				{
+
+					openni::CoordinateConverter::convertDepthToWorld(this->depthStream, i, j, (openni::DepthPixel)depth.at<unsigned short>(i, j), &X, &Y, &Z);
+					pcl::PointXYZRGB point;
+					point.x = X;
+					point.y = Y;
+					point.z = Z;
+					openni::CoordinateConverter::convertDepthToColor(this->depthStream, this->colorStream,i,  j, (openni::DepthPixel)depth.at<unsigned short>(i, j), &colorX, &colorY);
+					point.r = color.at<cv::Vec3b>(colorX, colorY)[2];
+					point.g = color.at<cv::Vec3b>(colorX, colorY)[1];
+					point.b = color.at<cv::Vec3b>(colorX, colorY)[0];
+					point_cloud_ptr->points.push_back(point);
+				}
+			}
+			//cout << "X:" << X << endl;
+			point_cloud_ptr->width = (int)point_cloud_ptr->points.size();
+			point_cloud_ptr->height = 1;
+			//cout << point_cloud_ptr->at(0, 0) << endl;
+			viewer.showCloud(point_cloud_ptr);
+			cv::circle(depth, cv::Point(300, 200), 10, cv::Scalar(0, 0, 255), -1, 8);
+			openni::CoordinateConverter::convertDepthToColor(this->depthStream, this->colorStream, 300, 200, (openni::DepthPixel)depth.at<unsigned short>(300,200), &x, &y);
+			cv::circle(color, cv::Point(x, y), 10, cv::Scalar(0, 0, 255), -1, 8);
+			cv::imshow("color image", color);
+			cv::imshow("depth image", depth);
+			cv::waitKey(30);
+	}
+
+
+
 }
