@@ -252,25 +252,25 @@ public:
 		ptfilter.setFilterLimits(0.0f, 4.0f);
 		ptfilter.filter(*cloud_f);
 
-		//pcl::SACSegmentation<PointType> seg;
-		//seg.setInputCloud(cloud2);
-		//seg.setOptimizeCoefficients(true);
-		//seg.setModelType(pcl::SACMODEL_PLANE);
-		//seg.setMethodType(pcl::SAC_RANSAC);
-		//seg.setDistanceThreshold(0.02f);
+		pcl::SACSegmentation<PointType> seg;
+		seg.setInputCloud(cloud_f);
+		seg.setOptimizeCoefficients(true);
+		seg.setModelType(pcl::SACMODEL_PLANE);
+		seg.setMethodType(pcl::SAC_RANSAC);
+		seg.setDistanceThreshold(0.02f);
 
-		//pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients());
-		//pcl::PointIndices::Ptr inliers(new pcl::PointIndices());
-		//seg.segment(*inliers, *coefficients);
+		pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients());
+		pcl::PointIndices::Ptr inliers(new pcl::PointIndices());
+		seg.segment(*inliers, *coefficients);
 
-		//pcl::ExtractIndices<PointType> extract(true);
-		//extract.setInputCloud(cloud2);
-		//extract.setIndices(inliers);
-		//extract.setNegative(true);
-		//extract.filter(*cloud_f);
+		pcl::ExtractIndices<PointType> extract(true);
+		extract.setInputCloud(cloud_f);
+		extract.setIndices(inliers);
+		extract.setNegative(true);
+		extract.filter(*cloud2);
 		//cloud_ = cloud_f;
 
-		cloud_ = cloud_f;
+		cloud_ = cloud2;
 		
 
 	}
