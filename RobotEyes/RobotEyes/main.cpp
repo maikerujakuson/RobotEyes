@@ -48,6 +48,18 @@
 #include <pcl/tracking/approx_nearest_pair_point_cloud_coherence.h>
 #include <pcl/tracking/nearest_pair_point_cloud_coherence.h>
 
+#include <pcl/ModelCoefficients.h>
+#include <pcl/point_types.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/filters/extract_indices.h>
+#include <pcl/filters/voxel_grid.h>
+#include <pcl/features/normal_3d.h>
+#include <pcl/kdtree/kdtree.h>
+#include <pcl/sample_consensus/method_types.h>
+#include <pcl/sample_consensus/model_types.h>
+#include <pcl/segmentation/sac_segmentation.h>
+#include <pcl/segmentation/extract_clusters.h>
+
 //
 //#include "camera.h"
 //#include "opticalFlow.h"
@@ -162,6 +174,8 @@ typedef boost::chrono::high_resolution_clock HRClock;
 }while (false)
 #endif
 
+
+// Function to print program usage
 void
 printHelp(int, char **argv)
 {
@@ -195,14 +209,16 @@ printHelp(int, char **argv)
 #endif
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Class to manage openni2grabber
 template <typename PointType>
 class OpenNI2Viewer
 {
 public:
+	// Use template point type 
 	typedef pcl::PointCloud<PointType> Cloud;
 	typedef typename Cloud::ConstPtr CloudConstPtr;
 
+	// Constructer 
 	OpenNI2Viewer(pcl::io::OpenNI2Grabber& grabber)
 		: cloud_viewer_(new pcl::visualization::PCLVisualizer("PCL OpenNI2 cloud"))
 		, image_viewer_()
@@ -211,23 +227,70 @@ public:
 	{
 	}
 
+	// Point cloud callback function
+	// This function is called when pointcloud is updated
 	void
 		cloud_callback(const CloudConstPtr& cloud)
 	{
+		// Calculate the FPS of point cloud viewer
 		FPS_CALC("cloud callback");
+		// Lock cloud_mutex
 		boost::mutex::scoped_lock lock(cloud_mutex_);
-		cloud_ = cloud;
-	}
+		// Set updated point cloud to member point cloud
+		//cloud_ = cloud;
+	
+		Cloud::Ptr cloud2(new Cloud(*cloud)), cloud_f(new Cloud);
+		// Filter point cloud by distance
+		pcl::PassThrough<PointType> ptfilter(true);
+		ptfilter.setInputCloud(cloud);
+		// Cut x dimention between -50cm and 50cm
+		ptfilter.setFilterFieldName("x");
+		ptfilter.setFilterLimits(-0.5f, 0.5f);
+		ptfilter.filter(*cloud2);
+		ptfilter.setInputCloud(cloud2);
+		ptfilter.setFilterFieldName("z");
+		ptfilter.setFilterLimits(0.0f, 4.0f);
+		ptfilter.filter(*cloud_f);
 
+		//pcl::SACSegmentation<PointType> seg;
+		//seg.setInputCloud(cloud2);
+		//seg.setOptimizeCoefficients(true);
+		//seg.setModelType(pcl::SACMODEL_PLANE);
+		//seg.setMethodType(pcl::SAC_RANSAC);
+		//seg.setDistanceThreshold(0.02f);
+
+		//pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients());
+		//pcl::PointIndices::Ptr inliers(new pcl::PointIndices());
+		//seg.segment(*inliers, *coefficients);
+
+		//pcl::ExtractIndices<PointType> extract(true);
+		//extract.setInputCloud(cloud2);
+		//extract.setIndices(inliers);
+		//extract.setNegative(true);
+		//extract.filter(*cloud_f);
+		//cloud_ = cloud_f;
+
+		cloud_ = cloud_f;
+		
+
+	}
+	
+	// Image callback function
+	// This function is called when image is updated
 	void
 		image_callback(const boost::shared_ptr<pcl::io::openni2::Image>& image)
 	{
+		// Calculate the FPS of image viewer
 		FPS_CALC("image callback");
+		// Lock image_mutex
 		boost::mutex::scoped_lock lock(image_mutex_);
+		// Set updated image to member image
 		image_ = image;
 
+		// Cheack if updated image is suited to pcl image viewer 
 		if (image->getEncoding() != pcl::io::openni2::Image::RGB)
 		{
+			// Make suited image 
 			if (rgb_data_size_ < image->getWidth() * image->getHeight())
 			{
 				if (rgb_data_)
@@ -239,6 +302,7 @@ public:
 		}
 	}
 
+	// Keyboard callback function
 	void
 		keyboard_callback(const pcl::visualization::KeyboardEvent& event, void*)
 	{
@@ -251,7 +315,8 @@ public:
 		else
 			cout << " released" << endl;
 	}
-
+	
+	// Mouse callback function
 	void
 		mouse_callback(const pcl::visualization::MouseEvent& mouse_event, void*)
 	{
@@ -261,18 +326,21 @@ public:
 		}
 	}
 
-	/**
-	* @brief starts the main loop
-	*/
+	// This function acts as main loop
 	void
 		run()
 	{
+		// Register mouse callback function with openni2viewer
 		cloud_viewer_->registerMouseCallback(&OpenNI2Viewer::mouse_callback, *this);
+		// Register keyboard callback function with openni2viewer
 		cloud_viewer_->registerKeyboardCallback(&OpenNI2Viewer::keyboard_callback, *this);
+		// Set FOV of camera 
 		cloud_viewer_->setCameraFieldOfView(1.02259994f);
+		// Register point cloud callback function with openni2viewr using boost
 		boost::function<void(const CloudConstPtr&) > cloud_cb = boost::bind(&OpenNI2Viewer::cloud_callback, this, _1);
 		boost::signals2::connection cloud_connection = grabber_.registerCallback(cloud_cb);
 
+		// Register image callback function with openni2viewer using boost
 		boost::signals2::connection image_connection;
 		if (grabber_.providesCallback<void(const boost::shared_ptr<pcl::io::openni2::Image>&)>())
 		{
@@ -287,6 +355,7 @@ public:
 
 		grabber_.start();
 
+		// Do loop untile viewer windows is terminated
 		while (!cloud_viewer_->wasStopped() && (image_viewer_ && !image_viewer_->wasStopped()))
 		{
 			boost::shared_ptr<pcl::io::openni2::Image> image;
@@ -361,7 +430,9 @@ public:
 	boost::shared_ptr<pcl::visualization::ImageViewer> image_viewer_;
 
 	pcl::io::OpenNI2Grabber& grabber_;
+	// Mutex object to protect point cloud ownership 
 	boost::mutex cloud_mutex_;
+	// Mutex object to protect RGB image onwership
 	boost::mutex image_mutex_;
 
 	CloudConstPtr cloud_;
@@ -370,27 +441,39 @@ public:
 	unsigned rgb_data_size_;
 };
 
-// Create the PCLVisualizer object
+// Shared pointer for PCLVisualizer (Pointcloud) 
 boost::shared_ptr<pcl::visualization::PCLVisualizer> cld;
+// Share pointer for ImageViewer (RGB image)
 boost::shared_ptr<pcl::visualization::ImageViewer> img;
 
-/* ---[ */
+// MAIN FUNCTION
 int
 main(int argc, char** argv)
 {
+	// String Variable for camera device ID
 	std::string device_id("");
+	
+	// 
 	pcl::io::OpenNI2Grabber::Mode depth_mode = pcl::io::OpenNI2Grabber::OpenNI_Default_Mode;
 	pcl::io::OpenNI2Grabber::Mode image_mode = pcl::io::OpenNI2Grabber::OpenNI_Default_Mode;
 	bool xyz = false;
 
+	// Check if the number of arguments is accurate
 	if (argc >= 2)
 	{
+		// When the number of arguments is accurate
+
+		// Get commands argument
 		device_id = argv[1];
+
+		// Cheack if a command is help or not 
 		if (device_id == "--help" || device_id == "-h")
 		{
+			// Print program argument usage 
 			printHelp(argc, argv);
 			return 0;
 		}
+		// When argument is "-l", list all availabe camera device
 		else if (device_id == "-l")
 		{
 			if (argc >= 3)
@@ -401,9 +484,12 @@ main(int argc, char** argv)
 			}
 			else
 			{
+				// Shared pointer to store an adress of device manager
 				boost::shared_ptr<pcl::io::openni2::OpenNI2DeviceManager> deviceManager = pcl::io::openni2::OpenNI2DeviceManager::getInstance();
+				// Cheack if any devices are availabe
 				if (deviceManager->getNumOfConnectedDevices() > 0)
 				{
+					// Print all available devices
 					for (unsigned deviceIdx = 0; deviceIdx < deviceManager->getNumOfConnectedDevices(); ++deviceIdx)
 					{
 						boost::shared_ptr<pcl::io::openni2::OpenNI2Device> device = deviceManager->getDeviceByIndex(deviceIdx);
@@ -411,16 +497,17 @@ main(int argc, char** argv)
 					}
 
 				}
+				// There is no availabe device
 				else
 					cout << "No devices connected." << endl;
-
-				cout << "Virtual Devices available: ONI player" << endl;
 			}
 			return 0;
 		}
 	}
+	//	When a device ID is not indicated
 	else
 	{
+		// Tell that program will use default device
 		boost::shared_ptr<pcl::io::openni2::OpenNI2DeviceManager> deviceManager = pcl::io::openni2::OpenNI2DeviceManager::getInstance();
 		if (deviceManager->getNumOfConnectedDevices() > 0)
 		{
@@ -429,6 +516,7 @@ main(int argc, char** argv)
 		}
 	}
 
+	// To do: When "-depthmode" or "-imagemode" is used bug occures 
 	unsigned mode;
 	if (pcl::console::parse(argc, argv, "-depthmode", mode) != -1)
 		depth_mode = pcl::io::OpenNI2Grabber::Mode(mode);
@@ -436,18 +524,23 @@ main(int argc, char** argv)
 	if (pcl::console::parse(argc, argv, "-imagemode", mode) != -1)
 		image_mode = pcl::io::OpenNI2Grabber::Mode(mode);
 
+	// Use "-xyz" mode
 	if (pcl::console::find_argument(argc, argv, "-xyz") != -1)
 		xyz = true;
 
+	// Accuire openni2grabber object
 	pcl::io::OpenNI2Grabber grabber(device_id, depth_mode, image_mode);
 
+	// Cheack if "-xyz" mode is used
 	if (xyz || !grabber.providesCallback<pcl::io::OpenNI2Grabber::sig_cb_openni_point_cloud_rgb>())
 	{
+		// Use white color point cloud
 		OpenNI2Viewer<pcl::PointXYZ> openni_viewer(grabber);
 		openni_viewer.run();
 	}
 	else
 	{
+		// Use colored point cloud
 		OpenNI2Viewer<pcl::PointXYZRGBA> openni_viewer(grabber);
 		openni_viewer.run();
 	}
