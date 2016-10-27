@@ -240,6 +240,7 @@ public:
 		//cloud_ = cloud;
 	
 		Cloud::Ptr cloud2(new Cloud(*cloud)), cloud_f(new Cloud);
+
 		// Filter point cloud by distance
 		pcl::PassThrough<PointType> ptfilter(true);
 		ptfilter.setInputCloud(cloud);
@@ -252,25 +253,46 @@ public:
 		ptfilter.setFilterLimits(0.0f, 4.0f);
 		ptfilter.filter(*cloud_f);
 
+		// Find points belonging to plane 
 		pcl::SACSegmentation<PointType> seg;
 		seg.setInputCloud(cloud_f);
 		seg.setOptimizeCoefficients(true);
 		seg.setModelType(pcl::SACMODEL_PLANE);
 		seg.setMethodType(pcl::SAC_RANSAC);
 		seg.setDistanceThreshold(0.02f);
-
 		pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients());
 		pcl::PointIndices::Ptr inliers(new pcl::PointIndices());
 		seg.segment(*inliers, *coefficients);
 
+		// Extract points except for plane
 		pcl::ExtractIndices<PointType> extract(true);
 		extract.setInputCloud(cloud_f);
 		extract.setIndices(inliers);
 		extract.setNegative(true);
 		extract.filter(*cloud2);
-		//cloud_ = cloud_f;
 
-		cloud_ = cloud2;
+		// Cluster point cloud
+		pcl::search::KdTree<PointType>::Ptr tree(new pcl::search::KdTree<PointType>);
+		tree->setInputCloud(cloud2);
+		std::vector<pcl::PointIndices> cluster_indices;
+		pcl::EuclideanClusterExtraction<PointType> ec;
+		// Set distance threshold 2cm
+		ec.setClusterTolerance(0.02f);
+		ec.setMinClusterSize(1000);
+		ec.setMaxClusterSize(300000);
+		ec.setSearchMethod(tree);
+		ec.setInputCloud(cloud2);
+		ec.extract(cluster_indices);
+
+		extract.setInputCloud(cloud2);
+		pcl::IndicesPtr indices(new std::vector<int>);
+		*indices = cluster_indices[0].indices;
+		extract.setIndices(indices);
+		extract.setNegative(false);
+		extract.filter(*cloud_f);
+
+		// Set proccesed point cloud to viewer
+		cloud_ = cloud_f;
 		
 
 	}
