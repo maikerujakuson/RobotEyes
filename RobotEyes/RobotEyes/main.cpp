@@ -241,9 +241,17 @@ public:
 	
 		Cloud::Ptr cloud2(new Cloud(*cloud)), cloud_f(new Cloud);
 
+		// Downsample input point cloud
+		pcl::VoxelGrid<PointType> vg;
+		pcl::PointCloud<PointType>::Ptr cloud_down(new pcl::PointCloud<PointType>);
+		vg.setInputCloud(cloud2);
+		vg.setLeafSize(0.01f, 0.01f, 0.01f);
+		vg.filter(*cloud_f);
+		std::cout << "PointCloud after filtering has: " << cloud_f->points.size() << " data points." << std::endl;
+
 		// Filter point cloud by distance
 		pcl::PassThrough<PointType> ptfilter(true);
-		ptfilter.setInputCloud(cloud);
+		ptfilter.setInputCloud(cloud_f);
 		// Cut x dimention between -50cm and 50cm
 		ptfilter.setFilterFieldName("x");
 		ptfilter.setFilterLimits(-0.5f, 0.5f);
@@ -278,7 +286,7 @@ public:
 		pcl::EuclideanClusterExtraction<PointType> ec;
 		// Set distance threshold 2cm
 		ec.setClusterTolerance(0.05f);
-		ec.setMinClusterSize(10000);
+		ec.setMinClusterSize(1000);
 		ec.setMaxClusterSize(300000);
 		ec.setSearchMethod(tree);
 		ec.setInputCloud(cloud2);
