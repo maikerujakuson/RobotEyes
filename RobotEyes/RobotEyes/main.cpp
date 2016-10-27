@@ -60,6 +60,18 @@
 #include <pcl/segmentation/sac_segmentation.h>
 #include <pcl/segmentation/extract_clusters.h>
 
+#include <pcl/ModelCoefficients.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
+#include <pcl/filters/extract_indices.h>
+#include <pcl/filters/passthrough.h>
+#include <pcl/features/normal_3d.h>
+#include <pcl/sample_consensus/method_types.h>
+#include <pcl/sample_consensus/model_types.h>
+#include <pcl/segmentation/sac_segmentation.h>
+
+#include <pcl/common/eigen.h>
+
 //
 //#include "camera.h"
 //#include "opticalFlow.h"
@@ -241,25 +253,34 @@ public:
 	
 		Cloud::Ptr cloud2(new Cloud(*cloud)), cloud_f(new Cloud);
 
-		// Downsample input point cloud
-		pcl::VoxelGrid<PointType> vg;
-		pcl::PointCloud<PointType>::Ptr cloud_down(new pcl::PointCloud<PointType>);
-		vg.setInputCloud(cloud2);
-		vg.setLeafSize(0.01f, 0.01f, 0.01f);
-		vg.filter(*cloud_f);
-		std::cout << "PointCloud after filtering has: " << cloud_f->points.size() << " data points." << std::endl;
+		 
+
+		//// Downsample input point cloud
+		//pcl::VoxelGrid<PointType> vg;
+		//pcl::PointCloud<PointType>::Ptr cloud_down(new pcl::PointCloud<PointType>);
+		//vg.setInputCloud(cloud2);
+		//vg.setLeafSize(0.01f, 0.01f, 0.01f);
+		//vg.filter(*cloud_f);
+		//std::cout << "PointCloud after filtering has: " << cloud_f->points.size() << " data points." << std::endl;
 
 		// Filter point cloud by distance
 		pcl::PassThrough<PointType> ptfilter(true);
-		ptfilter.setInputCloud(cloud_f);
+		ptfilter.setInputCloud(cloud);
 		// Cut x dimention between -50cm and 50cm
 		ptfilter.setFilterFieldName("x");
 		ptfilter.setFilterLimits(-0.5f, 0.5f);
 		ptfilter.filter(*cloud2);
 		ptfilter.setInputCloud(cloud2);
 		ptfilter.setFilterFieldName("z");
-		ptfilter.setFilterLimits(0.0f, 4.0f);
+		ptfilter.setFilterLimits(0.0f, 2.0f);
 		ptfilter.filter(*cloud_f);
+
+
+	
+
+
+
+		//extract.filter(*cloud2);
 
 		// Find points belonging to plane 
 		pcl::SACSegmentation<PointType> seg;
@@ -299,6 +320,12 @@ public:
 		extract.setNegative(false);
 		extract.filter(*cloud_f);
 
+		// Compute object centroid vector
+		Eigen::Vector4f centroid;
+		pcl::compute3DCentroid(*cloud_f, centroid);
+		cout << "X: " << centroid[0] << endl;
+		cout << "Y: " << centroid[1] << endl;
+		cout << "Z: " << centroid[2] << endl;
 		// Set proccesed point cloud to viewer
 		cloud_ = cloud_f;
 		
