@@ -277,8 +277,8 @@ public:
 		std::vector<pcl::PointIndices> cluster_indices;
 		pcl::EuclideanClusterExtraction<PointType> ec;
 		// Set distance threshold 2cm
-		ec.setClusterTolerance(0.02f);
-		ec.setMinClusterSize(1000);
+		ec.setClusterTolerance(0.05f);
+		ec.setMinClusterSize(10000);
 		ec.setMaxClusterSize(300000);
 		ec.setSearchMethod(tree);
 		ec.setInputCloud(cloud2);
