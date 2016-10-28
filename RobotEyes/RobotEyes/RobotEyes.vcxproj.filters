@@ -27,6 +27,9 @@
     <ClCompile Include="frame_process.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="tracker.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="camera.h">

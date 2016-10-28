@@ -275,13 +275,6 @@ public:
 		ptfilter.setFilterLimits(0.0f, 2.0f);
 		ptfilter.filter(*cloud_f);
 
-
-	
-
-
-
-		//extract.filter(*cloud2);
-
 		// Find points belonging to plane 
 		pcl::SACSegmentation<PointType> seg;
 		seg.setInputCloud(cloud_f);
