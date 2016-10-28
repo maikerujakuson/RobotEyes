@@ -291,6 +291,7 @@ public:
 		extract.setInputCloud(cloud_f);
 		extract.setIndices(inliers);
 		extract.setNegative(true);
+
 		extract.filter(*cloud2);
 
 		// Cluster point cloud

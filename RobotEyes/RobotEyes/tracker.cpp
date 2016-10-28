@@ -398,7 +398,7 @@ public:
 		// Set max iteration to 1000
 		seg.setMaxIterations(1000);
 		// Set distance threshold to 0.03 meters (distance from estimated plane)
-		seg.setDistanceThreshold(0.03);
+		seg.setDistanceThreshold(0.01);
 		// Set input cloud
 		seg.setInputCloud(cloud);
 		// Get the result (inliers: indices for plane point cloud, coefficients: plane coefficents)
@@ -556,6 +556,7 @@ public:
 	void
 		cloud_cb(const CloudConstPtr &cloud)
 	{
+		cout << "accquire point cloud" << endl;
 		// Lock mtx_ (why?) 
 		boost::mutex::scoped_lock lock(mtx_);
 		// Get the current time for FPS
@@ -566,7 +567,7 @@ public:
 		cloud_pass_.reset(new Cloud);
 		// Reset cloud_pass_downsampled_ (why?)
 		cloud_pass_downsampled_.reset(new Cloud);
-		// What are these doing?
+		// Variable for plane model
 		pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients());
 		pcl::PointIndices::Ptr inliers(new pcl::PointIndices());
 		// Filter point cloud accuired from camera
@@ -625,6 +626,7 @@ public:
 			// Cheack if target_cloud is empty
 			if (target_cloud != NULL)
 			{
+				cout << "start clustering" << endl;
 				// Segmentate each object by euclidan cluster
 				PCL_INFO("segmentation, please wait...\n");
 				// Get indices of each segmentated object
@@ -799,6 +801,7 @@ psuedomain(int argc, char** argv)
 		usage(argv);
 		exit(1);
 	}
+
 
 	std::string device_id = std::string(argv[1]);
 
