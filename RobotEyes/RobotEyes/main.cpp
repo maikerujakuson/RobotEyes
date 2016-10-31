@@ -71,6 +71,7 @@
 #include <pcl/segmentation/sac_segmentation.h>
 
 #include <pcl/common/eigen.h>
+#include <pcl/filters/project_inliers.h>
 
 //
 //#include "camera.h"
@@ -286,42 +287,48 @@ public:
 		pcl::PointIndices::Ptr inliers(new pcl::PointIndices());
 		seg.segment(*inliers, *coefficients);
 
-		// Extract points except for plane
-		pcl::ExtractIndices<PointType> extract(true);
-		extract.setInputCloud(cloud_f);
-		extract.setIndices(inliers);
-		extract.setNegative(true);
+		pcl::ProjectInliers<PointType> proj;
+		proj.setModelType(pcl::SACMODEL_PLANE);
+		proj.setInputCloud(cloud_f);
+		proj.setModelCoefficients(coefficients);
+		Cloud result;
+		proj.filter(result);
+		//// Extract points except for plane
+		//pcl::ExtractIndices<PointType> extract(true);
+		//extract.setInputCloud(cloud_f);
+		//extract.setIndices(inliers);
+		//extract.setNegative(true);
 
-		extract.filter(*cloud2);
+		//extract.filter(*cloud2);
 
-		// Cluster point cloud
-		pcl::search::KdTree<PointType>::Ptr tree(new pcl::search::KdTree<PointType>);
-		tree->setInputCloud(cloud2);
-		std::vector<pcl::PointIndices> cluster_indices;
-		pcl::EuclideanClusterExtraction<PointType> ec;
-		// Set distance threshold 2cm
-		ec.setClusterTolerance(0.05f);
-		ec.setMinClusterSize(1000);
-		ec.setMaxClusterSize(300000);
-		ec.setSearchMethod(tree);
-		ec.setInputCloud(cloud2);
-		ec.extract(cluster_indices);
+		//// Cluster point cloud
+		//pcl::search::KdTree<PointType>::Ptr tree(new pcl::search::KdTree<PointType>);
+		//tree->setInputCloud(cloud2);
+		//std::vector<pcl::PointIndices> cluster_indices;
+		//pcl::EuclideanClusterExtraction<PointType> ec;
+		//// Set distance threshold 2cm
+		//ec.setClusterTolerance(0.05f);
+		//ec.setMinClusterSize(1000);
+		//ec.setMaxClusterSize(300000);
+		//ec.setSearchMethod(tree);
+		//ec.setInputCloud(cloud2);
+		//ec.extract(cluster_indices);
 
-		extract.setInputCloud(cloud2);
-		pcl::IndicesPtr indices(new std::vector<int>);
-		*indices = cluster_indices[0].indices;
-		extract.setIndices(indices);
-		extract.setNegative(false);
-		extract.filter(*cloud_f);
+		//extract.setInputCloud(cloud2);
+		//pcl::IndicesPtr indices(new std::vector<int>);
+		//*indices = cluster_indices[0].indices;
+		//extract.setIndices(indices);
+		//extract.setNegative(false);
+		//extract.filter(*cloud_f);
 
-		// Compute object centroid vector
-		Eigen::Vector4f centroid;
-		pcl::compute3DCentroid(*cloud_f, centroid);
-		cout << "X: " << centroid[0] << endl;
-		cout << "Y: " << centroid[1] << endl;
-		cout << "Z: " << centroid[2] << endl;
+		//// Compute object centroid vector
+		//Eigen::Vector4f centroid;
+		//pcl::compute3DCentroid(*cloud_f, centroid);
+		//cout << "X: " << centroid[0] << endl;
+		//cout << "Y: " << centroid[1] << endl;
+		//cout << "Z: " << centroid[2] << endl;
 		// Set proccesed point cloud to viewer
-		cloud_ = cloud_f;
+		cloud_ = result.makeShared();
 		
 
 	}
@@ -499,7 +506,7 @@ boost::shared_ptr<pcl::visualization::ImageViewer> img;
 
 // MAIN FUNCTION
 int
-main(int argc, char** argv)
+not_main(int argc, char** argv)
 {
 	// String Variable for camera device ID
 	std::string device_id("");

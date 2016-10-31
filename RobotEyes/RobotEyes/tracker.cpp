@@ -14,12 +14,14 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl/io/openni2_grabber.h>
+#include <pcl/io/openni2/openni.h>
 #include <pcl/console/parse.h>
 #include <pcl/common/time.h>
 #include <pcl/common/centroid.h>
 #include <pcl/common/angles.h>>
 
 #include <pcl/visualization/cloud_viewer.h>
+#include <pcl/visualization/image_viewer.h>
 #include <pcl/visualization/pcl_visualizer.h>
 
 #include <pcl/io/pcd_io.h>
@@ -229,32 +231,44 @@ public:
 
 	}
 
+	// Function to visualize point cloud
 	void
 		viz_cb(pcl::visualization::PCLVisualizer& viz)
 	{
+		// Lock mtx_ object
 		boost::mutex::scoped_lock lock(mtx_);
 
+		// Cheack if cloud_pass_ is empty
 		if (!cloud_pass_)
 		{
 			boost::this_thread::sleep(boost::posix_time::seconds(1));
 			return;
 		}
 
+		// Cheack if new_cloud is true and cloud_pass_downsampled_ is not empty
 		if (new_cloud_ && cloud_pass_downsampled_)
 		{
 			CloudPtr cloud_pass;
+			// Decide whether downsampled cloud is used or not
 			if (!visualize_non_downsample_)
 				cloud_pass = cloud_pass_downsampled_;
 			else
 				cloud_pass = cloud_pass_;
 
+			//	Draw cloud_pass to display 
 			if (!viz.updatePointCloud(cloud_pass, "cloudpass"))
 			{
 				viz.addPointCloud(cloud_pass, "cloudpass");
 				viz.resetCameraViewpoint("cloudpass");
+				viz.setCameraPosition(
+					0, 0, 0,	// Position
+					0, 0, 1,	// ViewPoint
+					0, -1, 0);	// Up
 			}
+
 		}
 
+		// When tracking is available 
 		if (new_cloud_ && reference_)
 		{
 			bool ret = drawParticles(viz);
@@ -289,6 +303,7 @@ public:
 
 			}
 		}
+		// Cloud is not new
 		new_cloud_ = false;
 	}
 
@@ -491,7 +506,7 @@ public:
 		const CloudConstPtr &cloud_hull,
 		Cloud &result)
 	{
-		// Make 
+		// Make	 
 		pcl::ExtractPolygonalPrismData<PointType> polygon_extract;
 		// Indices for points lying inside polygonal prism
 		pcl::PointIndices::Ptr inliers_polygon(new pcl::PointIndices());
@@ -572,58 +587,43 @@ public:
 		pcl::PointIndices::Ptr inliers(new pcl::PointIndices());
 		// Filter point cloud accuired from camera
 		filterPassThrough(cloud, *cloud_pass_);
-		// 
-		if (counter_ < 10)
-		{
-			// Filter point cloud by voxelgrid
-			gridSample(cloud_pass_, *cloud_pass_downsampled_, downsampling_grid_size_);
-		}
-		// 
-		else if (counter_ == 10)
-		{
-			// Why is this line commented out?
-			//gridSample (cloud_pass_, *cloud_pass_downsampled_, 0.01);
 
+
+		// Mode to calculate the centroid of object
+		if (calc_object_) {
+			cout << "ŒvŽZ‚·‚é‚æ[" << endl;
 			// Set filtered cloud to downsampled cloud
 			cloud_pass_downsampled_ = cloud_pass_;
 			//	Pointer for objects point cloud 
 			CloudPtr target_cloud;
-			// Use convex hull
-			if (use_convex_hull_)
+			calc_object_ = false;
+			// Segment plane from downsampled point cloud
+			// Get plane indices(inliers)
+			planeSegmentation(cloud_pass_downsampled_, *coefficients, *inliers);
+			// Cheack whether plane is detected or not
+			if (inliers->indices.size() > 3)
 			{
-				// Segment plane from downsampled point cloud
-				// Get plane indices(inliers)
-				planeSegmentation(cloud_pass_downsampled_, *coefficients, *inliers);
-				// Cheack 
-				if (inliers->indices.size() > 3)
-				{
-					// 
-					CloudPtr cloud_projected(new Cloud);
-					cloud_hull_.reset(new Cloud);
-					nonplane_cloud_.reset(new Cloud);
+				//	Variable for projected cloud 
+				CloudPtr cloud_projected(new Cloud);
+				// 
+				cloud_hull_.reset(new Cloud);
+				nonplane_cloud_.reset(new Cloud);
 
-					// Project downsampled cloud onto plane
-					planeProjection(cloud_pass_downsampled_, *cloud_projected, coefficients);
-					// Get convex hull of projected cloud
-					convexHull(cloud_projected, *cloud_hull_, hull_vertices_);
-					// Extract objects supported by a plane
-					extractNonPlanePoints(cloud_pass_downsampled_, cloud_hull_, *nonplane_cloud_);
-					// Objects point cloud
-					target_cloud = nonplane_cloud_;
-				}
-				else
-				{
-					PCL_WARN("cannot segment plane\n");
-				}
+				// Project downsampled cloud onto plane
+				planeProjection(cloud_pass_downsampled_, *cloud_projected, coefficients);
+				// Get convex hull of projected cloud
+				convexHull(cloud_projected, *cloud_hull_, hull_vertices_);
+				// Extract objects supported by a plane
+				extractNonPlanePoints(cloud_pass_downsampled_, cloud_hull_, *nonplane_cloud_);
+				// Objects point cloud
+				target_cloud = nonplane_cloud_;
 			}
 			else
 			{
-				// Use downsampled cloud( not segmentated) 
-				PCL_WARN("without plane segmentation\n");
-				target_cloud = cloud_pass_downsampled_;
+				PCL_WARN("cannot segment plane\n");
 			}
 
-			// Cheack if target_cloud is empty
+			// Cheack if target_cloud is not empty
 			if (target_cloud != NULL)
 			{
 				cout << "start clustering" << endl;
@@ -646,48 +646,6 @@ public:
 					cout << "X: " << c[0] << endl;
 					cout << "Y: " << c[1] << endl;
 					cout << "Z: " << c[2] << endl;
-					// What is this line doing?
-					int segment_index = 0;
-					// Compute segment distance (x^2 + y^2)
-					double segment_distance = c[0] * c[0] + c[1] * c[1];
-
-					for (size_t i = 1; i < cluster_indices.size(); i++)
-					{
-						temp_cloud.reset(new Cloud);
-						extractSegmentCluster(target_cloud, cluster_indices, int(i), *temp_cloud);
-						pcl::compute3DCentroid<RefPointType>(*temp_cloud, c);
-						double distance = c[0] * c[0] + c[1] * c[1];
-						if (distance < segment_distance)
-						{
-							segment_index = int(i);
-							segment_distance = distance;
-						}
-					}
-
-					segmented_cloud_.reset(new Cloud);
-					extractSegmentCluster(target_cloud, cluster_indices, segment_index, *segmented_cloud_);
-					//pcl::PointCloud<pcl::Normal>::Ptr normals (new pcl::PointCloud<pcl::Normal>);
-					//normalEstimation (segmented_cloud_, *normals);
-					RefCloudPtr ref_cloud(new RefCloud);
-					//addNormalToCloud (segmented_cloud_, normals, *ref_cloud);
-					ref_cloud = segmented_cloud_;
-					RefCloudPtr nonzero_ref(new RefCloud);
-					removeZeroPoints(ref_cloud, *nonzero_ref);
-
-					PCL_INFO("calculating cog\n");
-
-					RefCloudPtr transed_ref(new RefCloud);
-					pcl::compute3DCentroid<RefPointType>(*nonzero_ref, c);
-					Eigen::Affine3f trans = Eigen::Affine3f::Identity();
-					trans.translation().matrix() = Eigen::Vector3f(c[0], c[1], c[2]);
-					//pcl::transformPointCloudWithNormals<RefPointType> (*ref_cloud, *transed_ref, trans.inverse());
-					pcl::transformPointCloud<RefPointType>(*nonzero_ref, *transed_ref, trans.inverse());
-					CloudPtr transed_ref_downsampled(new Cloud);
-					gridSample(transed_ref, *transed_ref_downsampled, downsampling_grid_size_);
-					tracker_->setReferenceCloud(transed_ref_downsampled);
-					tracker_->setTrans(trans);
-					reference_ = transed_ref;
-					tracker_->setMinIndices(int(ref_cloud->points.size()) / 2);
 				}
 				else
 				{
@@ -695,19 +653,143 @@ public:
 				}
 			}
 		}
-		else
-		{
-			//normals_.reset (new pcl::PointCloud<pcl::Normal>);
-			//normalEstimation (cloud_pass_downsampled_, *normals_);
-			//RefCloudPtr tracking_cloud (new RefCloud ());
-			//addNormalToCloud (cloud_pass_downsampled_, normals_, *tracking_cloud);
-			//tracking_cloud = cloud_pass_downsampled_;
+		// 
+		//if (counter_ < 10)
+		//{
+		//	// Filter point cloud by voxelgrid
+		//	gridSample(cloud_pass_, *cloud_pass_downsampled_, downsampling_grid_size_);
+		//}
+		//// 
+		//else if (counter_ == 10)
+		//{
+		//	// Why is this line commented out?
+		//	//gridSample (cloud_pass_, *cloud_pass_downsampled_, 0.01);
 
-			//*cloud_pass_downsampled_ = *cloud_pass_;
-			//cloud_pass_downsampled_ = cloud_pass_;
-			gridSampleApprox(cloud_pass_, *cloud_pass_downsampled_, downsampling_grid_size_);
-			tracking(cloud_pass_downsampled_);
-		}
+		//	// Set filtered cloud to downsampled cloud
+		//	cloud_pass_downsampled_ = cloud_pass_;
+		//	//	Pointer for objects point cloud 
+		//	CloudPtr target_cloud;
+		//	// Use convex hull
+		//	if (use_convex_hull_)
+		//	{
+		//		// Segment plane from downsampled point cloud
+		//		// Get plane indices(inliers)
+		//		planeSegmentation(cloud_pass_downsampled_, *coefficients, *inliers);
+		//		// Cheack whether plane is detected or not
+		//		if (inliers->indices.size() > 3)
+		//		{
+		//			//	Variable for projected cloud 
+		//			CloudPtr cloud_projected(new Cloud);
+		//			// 
+		//			cloud_hull_.reset(new Cloud);
+		//			nonplane_cloud_.reset(new Cloud);
+
+		//			// Project downsampled cloud onto plane
+		//			planeProjection(cloud_pass_downsampled_, *cloud_projected, coefficients);
+		//			// Get convex hull of projected cloud
+		//			convexHull(cloud_projected, *cloud_hull_, hull_vertices_);
+		//			// Extract objects supported by a plane
+		//			extractNonPlanePoints(cloud_pass_downsampled_, cloud_hull_, *nonplane_cloud_);
+		//			// Objects point cloud
+		//			target_cloud = nonplane_cloud_;
+		//		}
+		//		else
+		//		{
+		//			PCL_WARN("cannot segment plane\n");
+		//		}
+		//	}
+		//	else
+		//	{
+		//		// Use downsampled cloud( not segmentated) 
+		//		PCL_WARN("without plane segmentation\n");
+		//		target_cloud = cloud_pass_downsampled_;
+		//	}
+
+		//	// Cheack if target_cloud is not empty
+		//	if (target_cloud != NULL)
+		//	{
+		//		cout << "start clustering" << endl;
+		//		// Segmentate each object by euclidan cluster
+		//		PCL_INFO("segmentation, please wait...\n");
+		//		// Get indices of each segmentated object
+		//		std::vector<pcl::PointIndices> cluster_indices;
+		//		euclideanSegment(target_cloud, cluster_indices);
+		//		// Cheack if any objects exist
+		//		if (cluster_indices.size() > 0)
+		//		{
+		//			// select the cluster to track
+		//			CloudPtr temp_cloud(new Cloud);
+		//			// Extract 0th object cluster from point cloud
+		//			extractSegmentCluster(target_cloud, cluster_indices, 0, *temp_cloud);
+		//			// Vector for centroid of object
+		//			Eigen::Vector4f c;
+		//			// Compute the centroid of extracted object cloud
+		//			pcl::compute3DCentroid<RefPointType>(*temp_cloud, c);
+		//			cout << "X: " << c[0] << endl;
+		//			cout << "Y: " << c[1] << endl;
+		//			cout << "Z: " << c[2] << endl;
+		//			// What is this line doing?
+		//			int segment_index = 0;
+		//			// Compute segment distance (x^2 + y^2)
+		//			double segment_distance = c[0] * c[0] + c[1] * c[1];
+
+		//			for (size_t i = 1; i < cluster_indices.size(); i++)
+		//			{
+		//				temp_cloud.reset(new Cloud);
+		//				extractSegmentCluster(target_cloud, cluster_indices, int(i), *temp_cloud);
+		//				pcl::compute3DCentroid<RefPointType>(*temp_cloud, c);
+		//				double distance = c[0] * c[0] + c[1] * c[1];
+		//				if (distance < segment_distance)
+		//				{
+		//					segment_index = int(i);
+		//					segment_distance = distance;
+		//				}
+		//			}
+
+		//			segmented_cloud_.reset(new Cloud);
+		//			extractSegmentCluster(target_cloud, cluster_indices, segment_index, *segmented_cloud_);
+		//			//pcl::PointCloud<pcl::Normal>::Ptr normals (new pcl::PointCloud<pcl::Normal>);
+		//			//normalEstimation (segmented_cloud_, *normals);
+		//			RefCloudPtr ref_cloud(new RefCloud);
+		//			//addNormalToCloud (segmented_cloud_, normals, *ref_cloud);
+		//			ref_cloud = segmented_cloud_;
+		//			RefCloudPtr nonzero_ref(new RefCloud);
+		//			removeZeroPoints(ref_cloud, *nonzero_ref);
+
+		//			PCL_INFO("calculating cog\n");
+
+		//			RefCloudPtr transed_ref(new RefCloud);
+		//			pcl::compute3DCentroid<RefPointType>(*nonzero_ref, c);
+		//			Eigen::Affine3f trans = Eigen::Affine3f::Identity();
+		//			trans.translation().matrix() = Eigen::Vector3f(c[0], c[1], c[2]);
+		//			//pcl::transformPointCloudWithNormals<RefPointType> (*ref_cloud, *transed_ref, trans.inverse());
+		//			pcl::transformPointCloud<RefPointType>(*nonzero_ref, *transed_ref, trans.inverse());
+		//			CloudPtr transed_ref_downsampled(new Cloud);
+		//			gridSample(transed_ref, *transed_ref_downsampled, downsampling_grid_size_);
+		//			tracker_->setReferenceCloud(transed_ref_downsampled);
+		//			tracker_->setTrans(trans);
+		//			reference_ = transed_ref;
+		//			tracker_->setMinIndices(int(ref_cloud->points.size()) / 2);
+		//		}
+		//		else
+		//		{
+		//			PCL_WARN("euclidean segmentation failed\n");
+		//		}
+		//	}
+		//}
+		//else
+		//{
+		//	//normals_.reset (new pcl::PointCloud<pcl::Normal>);
+		//	//normalEstimation (cloud_pass_downsampled_, *normals_);
+		//	//RefCloudPtr tracking_cloud (new RefCloud ());
+		//	//addNormalToCloud (cloud_pass_downsampled_, normals_, *tracking_cloud);
+		//	//tracking_cloud = cloud_pass_downsampled_;
+
+		//	//*cloud_pass_downsampled_ = *cloud_pass_;
+		//	//cloud_pass_downsampled_ = cloud_pass_;
+		//	gridSampleApprox(cloud_pass_, *cloud_pass_downsampled_, downsampling_grid_size_);
+		//	tracking(cloud_pass_downsampled_);
+		//}
 
 		new_cloud_ = true;
 		double end = pcl::getTime();
@@ -716,24 +798,78 @@ public:
 		counter_++;
 	}
 
+	// Callback function when image updated
+	void
+		image_cb(const boost::shared_ptr<pcl::io::openni2::DepthImage>& depth)
+	{
+		// Calculate the FPS of image viewer
+		FPS_CALC("image callback");
+		// Lock image_mutex
+		boost::mutex::scoped_lock lock(image_mutex_);
+		// Set updated image to member image
+		image_ = image;
+
+		// Cheack if updated image is suited to pcl image viewer 
+		if (image->getEncoding() != pcl::io::openni2::Image::RGB)
+		{
+			// Make suited image 
+			if (depth_data_ < image->getWidth() * image->getHeight())
+			{
+				if (depth_data_)
+					delete[] depth_data_;
+				depth_data_ = image->getWidth() * image->getHeight();
+				depth_data_ = new unsigned char[depth_data_ * 3];
+			}
+			image_->fillRGB(image_->getWidth(), image_->getHeight(), rgb_data_);
+		}
+
+	}
+
+	// Keyboard callback function
+	void
+		keyboard_callback(const pcl::visualization::KeyboardEvent& event, void*)
+	{
+		if (event.getKeyCode())
+			cout << "the key \'" << event.getKeyCode() << "\' (" << event.getKeyCode() << ") was";
+		else
+			cout << "the special key \'" << event.getKeySym() << "\' was";
+		if (event.keyDown())
+			cout << " pressed" << endl;
+		else
+			cout << " released" << endl;
+
+		if (event.getKeySym() == "t" && event.keyDown())
+			calc_object_ = true;
+	}
+
+	// Function to run openNI2Grabber
 	void
 		run()
 	{
+		//  Make OpenNI2Grabber object
 		pcl::Grabber* interface = new pcl::io::OpenNI2Grabber(device_id_);
+		// 
 		boost::function<void(const CloudConstPtr&)> f =
 			boost::bind(&OpenNISegmentTracking::cloud_cb, this, _1);
+		// Register cloud callback function with grabber interface
 		interface->registerCallback(f);
-
+		// Run a callable object on th UI thread
 		viewer_.runOnVisualizationThread(boost::bind(&OpenNISegmentTracking::viz_cb, this, _1), "viz_cb");
-
+		viewer_.registerKeyboardCallback(&OpenNISegmentTracking::keyboard_callback, *this);
+		// Start the streams
 		interface->start();
 
+		// 
 		while (!viewer_.wasStopped())
+			// 
 			boost::this_thread::sleep(boost::posix_time::seconds(1));
+		// Stop OpenNI2Grabber
 		interface->stop();
 	}
 
 	pcl::visualization::CloudViewer viewer_;
+	pcl::visualization::ImageViewer imgViewer_;
+
 	pcl::PointCloud<pcl::Normal>::Ptr normals_;
 	CloudPtr cloud_pass_;
 	CloudPtr cloud_pass_downsampled_;
@@ -746,6 +882,7 @@ public:
 
 	std::string device_id_;
 	boost::mutex mtx_;
+	boost::mutex image_mutex_;
 	bool new_cloud_;
 	pcl::NormalEstimationOMP<PointType, pcl::Normal> ne_; // to store threadpool
 	boost::shared_ptr<ParticleFilter> tracker_;
@@ -757,6 +894,11 @@ public:
 	double computation_time_;
 	double downsampling_time_;
 	double downsampling_grid_size_;
+	bool calc_object_ = false;
+
+	// Variables for image
+	boost::shared_ptr<pcl::io::openni2::DepthImage> image_;
+	unsigned char* depth_data_;
 };
 
 void
@@ -777,7 +919,7 @@ usage(char** argv)
 
 // MAIN FUNCTION
 int
-psuedomain(int argc, char** argv)
+main(int argc, char** argv)
 {
 	// Variable for 
 	bool use_convex_hull = true;
