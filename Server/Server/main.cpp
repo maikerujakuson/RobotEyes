@@ -1,73 +1,65 @@
+
 #include <stdio.h>
 #include <iostream>
-#include <WinSock2.h>
-#include <WS2tcpip.h>
+#include <winsock2.h>
 
+int
+main()
+{
+	SOCKET sock1;
+	struct sockaddr_in addr1;
+	fd_set fds, readfds;
+	char buf[2048];
+	WSADATA wsaData;
 
-// Port number 
-#define PORT 9876 
+	WSAStartup(MAKEWORD(2, 0), &wsaData);
 
-int main() {
-	int i;
-	// ポート番号，ソケット
-	int srcSocket;  // 自分
-	int dstSocket;  // 相手
+	// 受信ソケットを2つ作ります
+	sock1 = socket(AF_INET, SOCK_DGRAM, 0);
 
-	// Structure to store IP address and port of server
-	struct sockaddr_in srcAddr;
-	// Structure to store IP address and port of client
-	struct sockaddr_in dstAddr;
-	// Variable for size of client sockaddr_in
-	int dstAddrSize = sizeof(dstAddr);
-	// Variable for status
-	int status;
-	// 
-	int numrcv;
-	char buffer[1024];
+	addr1.sin_family = AF_INET;
 
-	// Structure to contain information about the Window socket implementation
-	WSADATA data;
-	// Initialize DLL to use WinSock API
-	WSAStartup(MAKEWORD(2, 0), &data);
-	// Initialize srcAddr with 0
-	memset(&srcAddr, 0, sizeof(srcAddr));
-	// Set port number to srcAddr
-	srcAddr.sin_port = htons(PORT);
-	// What are below two lines doing?
-	srcAddr.sin_family = AF_INET;
-	srcAddr.sin_addr.s_addr = htonl(INADDR_ANY);
-	// Create endpoint for communication and Set endpoint to srcSocket
-	srcSocket = socket(AF_INET, SOCK_STREAM, 0);
-	// Assgin the address specified by addr to the socket
-	bind(srcSocket, (struct sockaddr *) &srcAddr, sizeof(srcAddr));
-	// Accept incoming connection request
-	listen(srcSocket, 1);
+	addr1.sin_addr.S_un.S_addr = inet_addr("127.0.0.1");
 
-	while (1) { 
-		// Wait for connection from client
-		printf("Wait connection...\nRun the client program.\n");
-		dstSocket = accept(srcSocket, (struct sockaddr *) &dstAddr, &dstAddrSize);
-		printf("Received the connection from %s\n", inet_ntoa(dstAddr.sin_addr));
-		std::cout << "ochinchin" << std::endl;
-		while (1) {
-			// Receive packet
-			numrcv = recv(dstSocket, buffer, sizeof(char) * 1024, 0);
-			if (numrcv == 0 || numrcv == -1) {
-				status = closesocket(dstSocket); break;
-			}
-			std::cout << "omanman" << std::endl;
-			printf("変換前 %s", buffer);
-			for (i = 0; i< numrcv; i++) { // bufの中の小文字を大文字に変換
-										  //if(isalpha(buffer[i])) 
-				buffer[i] = toupper(buffer[i]);
-			}
-			// パケットの送信
-			send(dstSocket, buffer, sizeof(char) * 1024, 0);
-			printf("→ 変換後 %s \n", buffer);
+	// 2つの別々のポートで待つために別のポート番号をそれぞれ設定します
+	addr1.sin_port = htons(11111);
+
+	// 2つの別々のポートで待つようにbindします
+	bind(sock1, (struct sockaddr *)&addr1, sizeof(addr1));
+
+	// fd_setの初期化します
+	FD_ZERO(&readfds);
+
+	// selectで待つ読み込みソケットとしてsock1を登録します
+	FD_SET(sock1, &readfds);
+
+	struct timeval timeout;
+	timeout.tv_sec = 0;
+	timeout.tv_usec = 0;
+	// 無限ループです
+	// このサンプルでは、この無限ループを抜けません
+	while (1) {
+		std::cout << "Fuck you" << std::endl;
+		// 読み込み用fd_setの初期化
+		// selectが毎回内容を上書きしてしまうので、毎回初期化します
+		memcpy(&fds, &readfds, sizeof(fd_set));
+
+		// fdsに設定されたソケットが読み込み可能になるまで待ちます
+		select(0, &fds, NULL, NULL, &timeout);
+
+		// sock1に読み込み可能データがある場合
+		if (FD_ISSET(sock1, &fds)) {
+			// sock1からデータを受信して表示します
+			memset(buf, 0, sizeof(buf));
+			recv(sock1, buf, sizeof(buf), 0);
+			printf("%s\n", buf);
 		}
 	}
-	// Do clean up 
+
+	// このサンプルでは、ここへは到達しません
+	closesocket(sock1);
+
 	WSACleanup();
 
-	return(0);
+	return 0;
 }

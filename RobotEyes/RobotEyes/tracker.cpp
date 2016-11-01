@@ -273,10 +273,58 @@ public:
 		// Cheack if new_cloud is true and cloud_pass_downsampled_ is not empty
 		if (new_cloud_ && drawOBB_)
 		{
-			viz.removeShape("OBB");
+			viz.removeAllShapes();
+			//viz.removeShape("OBB");
 			Eigen::Vector3f position(position_OBB_.x, position_OBB_.y, position_OBB_.z);
 			Eigen::Quaternionf quat(rotational_matrix_OBB_);
-			viz.addCube(position, quat, max_point_OBB_.x - min_point_OBB_.x, max_point_OBB_.y - min_point_OBB_.y, max_point_OBB_.z - min_point_OBB_.z, "OBB");
+			//viz.addCube(position, quat, max_point_OBB_.x - min_point_OBB_.x, max_point_OBB_.y - min_point_OBB_.y, max_point_OBB_.z - min_point_OBB_.z, "OBB");
+			
+			// Calculate the position and the pose of object
+			pcl::PointXYZ center(mass_center_(0), mass_center_(1), mass_center_(2));
+			pcl::PointXYZ x_axis(major_vector_(0) + mass_center_(0), major_vector_(1) + mass_center_(1), major_vector_(2) + mass_center_(2));
+			pcl::PointXYZ y_axis(middle_vector_(0) + mass_center_(0), middle_vector_(1) + mass_center_(1), middle_vector_(2) + mass_center_(2));
+			pcl::PointXYZ z_axis(minor_vector_(0) + mass_center_(0), minor_vector_(1) + mass_center_(1), minor_vector_(2) + mass_center_(2));
+
+			Eigen::Vector3f p1_(min_point_OBB_.x, min_point_OBB_.y, min_point_OBB_.z);
+			Eigen::Vector3f p2_(min_point_OBB_.x, min_point_OBB_.y, max_point_OBB_.z);
+			Eigen::Vector3f p3_(max_point_OBB_.x, min_point_OBB_.y, max_point_OBB_.z);
+			Eigen::Vector3f p4_(max_point_OBB_.x, min_point_OBB_.y, min_point_OBB_.z);
+			Eigen::Vector3f p5_(min_point_OBB_.x, max_point_OBB_.y, min_point_OBB_.z);
+			Eigen::Vector3f p6_(min_point_OBB_.x, max_point_OBB_.y, max_point_OBB_.z);
+			Eigen::Vector3f p7_(max_point_OBB_.x, max_point_OBB_.y, max_point_OBB_.z);
+			Eigen::Vector3f p8_(max_point_OBB_.x, max_point_OBB_.y, min_point_OBB_.z);
+
+			p1_ = rotational_matrix_OBB_ * p1_ + position;
+			p2_ = rotational_matrix_OBB_ * p2_ + position;
+			p3_ = rotational_matrix_OBB_ * p3_ + position;
+			p4_ = rotational_matrix_OBB_ * p4_ + position;
+			p5_ = rotational_matrix_OBB_ * p5_ + position;
+			p6_ = rotational_matrix_OBB_ * p6_ + position;
+			p7_ = rotational_matrix_OBB_ * p7_ + position;
+			p8_ = rotational_matrix_OBB_ * p8_ + position;
+			
+			pcl::PointXYZ pt1 (p1_ (0), p1_ (1), p1_ (2));
+			pcl::PointXYZ pt2 (p2_ (0), p2_ (1), p2_ (2));
+			pcl::PointXYZ pt3 (p3_ (0), p3_ (1), p3_ (2));
+			pcl::PointXYZ pt4 (p4_ (0), p4_ (1), p4_ (2));
+			pcl::PointXYZ pt5 (p5_ (0), p5_ (1), p5_ (2));
+			pcl::PointXYZ pt6 (p6_ (0), p6_ (1), p6_ (2));
+			pcl::PointXYZ pt7 (p7_ (0), p7_ (1), p7_ (2));
+			pcl::PointXYZ pt8 (p8_ (0), p8_ (1), p8_ (2));
+
+			viz.addLine (pt1, pt2, 1.0, 0.0, 0.0, "1 edge");
+			viz.addLine (pt1, pt4, 1.0, 0.0, 0.0, "2 edge");
+			viz.addLine (pt1, pt5, 1.0, 0.0, 0.0, "3 edge");
+			viz.addLine (pt5, pt6, 1.0, 0.0, 0.0, "4 edge");
+			viz.addLine (pt5, pt8, 1.0, 0.0, 0.0, "5 edge");
+			viz.addLine (pt2, pt6, 1.0, 0.0, 0.0, "6 edge");
+			viz.addLine (pt6, pt7, 1.0, 0.0, 0.0, "7 edge");
+			viz.addLine (pt7, pt8, 1.0, 0.0, 0.0, "8 edge");
+			viz.addLine (pt2, pt3, 1.0, 0.0, 0.0, "9 edge");
+			viz.addLine (pt4, pt8, 1.0, 0.0, 0.0, "10 edge");
+			viz.addLine (pt3, pt4, 1.0, 0.0, 0.0, "11 edge");
+			viz.addLine (pt3, pt7, 1.0, 0.0, 0.0, "12 edge");
+
 		}
 
 		// When tracking is available 
@@ -840,6 +888,7 @@ public:
 		counter_++;
 	}
 
+
 	// Callback function when image updated
 	void
 		image_cb(const boost::shared_ptr<pcl::io::openni2::DepthImage>& depth)
@@ -898,13 +947,16 @@ public:
 		// Run a callable object on th UI thread
 		viewer_.runOnVisualizationThread(boost::bind(&OpenNISegmentTracking::viz_cb, this, _1), "viz_cb");
 		viewer_.registerKeyboardCallback(&OpenNISegmentTracking::keyboard_callback, *this);
+
+			
 		// Start the streams
 		interface->start();
 
 		// 
-		while (!viewer_.wasStopped())
+		while (!viewer_.wasStopped()) {
 			// 
 			boost::this_thread::sleep(boost::posix_time::seconds(1));
+		}
 		// Stop OpenNI2Grabber
 		interface->stop();
 	}
@@ -955,6 +1007,7 @@ public:
 	float major_value_, middle_value_, minor_value_;
 	Eigen::Vector3f major_vector_, middle_vector_, minor_vector_;
 	Eigen::Vector3f mass_center_;
+
 };
 
 void
@@ -1009,7 +1062,7 @@ main(int argc, char** argv)
 		exit(1);
 	}
 
-	// Make Camera object
+	// Create openi object
 	OpenNISegmentTracking<pcl::PointXYZRGBA> v(device_id, 8, downsampling_grid_size,
 		use_convex_hull,
 		visualize_non_downsample, visualize_particles,

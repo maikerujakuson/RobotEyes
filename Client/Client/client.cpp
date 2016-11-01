@@ -1,54 +1,32 @@
 #include <stdio.h>
 #include <winsock2.h>
-#include <ws2tcpip.h>
 
-#define PORT 9876 //サーバープログラムとポート番号を合わせてください
+int
+main()
+{
+	SOCKET sock;
+	struct sockaddr_in dest1;
+	char buf[1024];
+	WSADATA wsaData;
 
-int main() {
-	// IP アドレス，ポート番号，ソケット，sockaddr_in 構造体
-	char destination[32];
-	int dstSocket;
-	struct sockaddr_in dstAddr;
+	WSAStartup(MAKEWORD(2, 0), &wsaData);
 
-	// 各種パラメータ
-	char buffer[1024];
+	sock = socket(AF_INET, SOCK_DGRAM, 0);
 
-	// Windows の場合
-	WSADATA data;
-	WSAStartup(MAKEWORD(2, 0), &data);
+	dest1.sin_family = AF_INET;
 
-	// 相手先アドレスの入力と送る文字の入力
-	printf("サーバーマシンのIPは？:");
-	scanf("%s", destination);
+	dest1.sin_addr.S_un.S_addr = inet_addr("127.0.0.1");
 
-	// sockaddr_in 構造体のセット
-	memset(&dstAddr, 0, sizeof(dstAddr));
-	dstAddr.sin_port = htons(PORT);
-	dstAddr.sin_family = AF_INET;
-	dstAddr.sin_addr.s_addr = inet_addr(destination);
+	dest1.sin_port = htons(11111);
 
-	// ソケットの生成
-	dstSocket = socket(AF_INET, SOCK_STREAM, 0);
+	memset(buf, 0, sizeof(buf));
+	_snprintf(buf, sizeof(buf), "data to port 11111");
+	sendto(sock,
+		buf, strlen(buf), 0, (struct sockaddr *)&dest1, sizeof(dest1));
 
-	//接続
-	if (connect(dstSocket, (struct sockaddr *) &dstAddr, sizeof(dstAddr))) {
-		printf("%s　に接続できませんでした\n", destination);
-		return(-1);
-	}
-	printf("%s に接続しました\n", destination);
-	printf("適当なアルファベットを入力してください\n");
+	closesocket(sock);
 
-	while (1) {
-		scanf("%s", buffer);
-		//パケットの送信
-		send(dstSocket, buffer, 1024, 0);
-		//パケットの受信
-		recv(dstSocket, buffer, 1024, 0);
-		printf("→ %s\n\n", buffer);
-	}
-
-	// Windows でのソケットの終了
-	closesocket(dstSocket);
 	WSACleanup();
-	return(0);
+
+	return 0;
 }
