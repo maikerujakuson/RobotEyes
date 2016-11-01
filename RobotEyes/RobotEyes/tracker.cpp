@@ -31,10 +31,12 @@
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/filters/approximate_voxel_grid.h>
 #include <pcl/filters/extract_indices.h>
+#include <pcl/filters/statistical_outlier_removal.h>
 
 #include <pcl/features/normal_3d.h>
 #include <pcl/features/normal_3d_omp.h>
 #include <pcl/features/integral_image_normal.h>
+#include <pcl/features/moment_of_inertia_estimation.h>
 
 #include <pcl/sample_consensus/method_types.h>
 #include <pcl/sample_consensus/model_types.h>
@@ -268,6 +270,15 @@ public:
 
 		}
 
+		// Cheack if new_cloud is true and cloud_pass_downsampled_ is not empty
+		if (new_cloud_ && drawOBB_)
+		{
+			viz.removeShape("OBB");
+			Eigen::Vector3f position(position_OBB_.x, position_OBB_.y, position_OBB_.z);
+			Eigen::Quaternionf quat(rotational_matrix_OBB_);
+			viz.addCube(position, quat, max_point_OBB_.x - min_point_OBB_.x, max_point_OBB_.y - min_point_OBB_.y, max_point_OBB_.z - min_point_OBB_.z, "OBB");
+		}
+
 		// When tracking is available 
 		if (new_cloud_ && reference_)
 		{
@@ -314,7 +325,7 @@ public:
 		FPS_CALC_BEGIN;
 		pcl::PassThrough<PointType> pass;
 		pass.setFilterFieldName("z");
-		pass.setFilterLimits(0.0, 2.0);
+		pass.setFilterLimits(0.0, 1.5);
 		//pass.setFilterLimits (0.0, 1.5);
 		//pass.setFilterLimits (0.0, 0.6);
 		pass.setKeepOrganized(false);
@@ -327,6 +338,19 @@ public:
 		pass.filter(result);
 
 		FPS_CALC_END("filterPassThrough");
+	}
+
+	// Remove outliers using a statisticaloutlierremoval filter
+	void statisticalRemoval(const CloudConstPtr &cloud,
+		Cloud &result, int numOfNeighbors,double sd)
+	{
+		pcl::StatisticalOutlierRemoval<PointType> sor;
+		sor.setInputCloud(cloud);
+		// Set the number of neighbors to analyze for each point 
+		sor.setMeanK(numOfNeighbors);
+		// Remove sd standard deviation far from mean 
+		sor.setStddevMulThresh(sd);
+		sor.filter(result);
 	}
 
 	// Segmentate each object by euclidean cluster
@@ -366,7 +390,7 @@ public:
 		// Why is this line commented out?
 		//pcl::ApproximateVoxelGrid<PointType> grid;
 
-		// Set voxel size to leaf_size (default: 0.01meter in each dimension)  
+		// Set voxel size to leaf_size (default: 0.01meter in each dimension)  6
 		grid.setLeafSize(float(leaf_size), float(leaf_size), float(leaf_size));
 		// Set input point cloud 
 		grid.setInputCloud(cloud);
@@ -413,7 +437,7 @@ public:
 		// Set max iteration to 1000
 		seg.setMaxIterations(1000);
 		// Set distance threshold to 0.03 meters (distance from estimated plane)
-		seg.setDistanceThreshold(0.01);
+		seg.setDistanceThreshold(0.003);
 		// Set input cloud
 		seg.setInputCloud(cloud);
 		// Get the result (inliers: indices for plane point cloud, coefficients: plane coefficents)
@@ -511,7 +535,7 @@ public:
 		// Indices for points lying inside polygonal prism
 		pcl::PointIndices::Ptr inliers_polygon(new pcl::PointIndices());
 		// Set height parameters (0.01m to 10m from the plane) 
-		polygon_extract.setHeightLimits(0.01, 10.0);
+		polygon_extract.setHeightLimits(0.005, 10.0);
 		// Set convex hull of plane
 		polygon_extract.setInputPlanarHull(cloud_hull);
 		// Set input cloud
@@ -567,6 +591,12 @@ public:
 		result.is_dense = true;
 	}
 
+	// Calculate object AABB
+	void calcAABB(const CloudConstPtr &cloud)
+	{
+
+	}
+
 	// Callback function when updating point cloud
 	void
 		cloud_cb(const CloudConstPtr &cloud)
@@ -592,8 +622,8 @@ public:
 		// Mode to calculate the centroid of object
 		if (calc_object_) {
 			cout << "ŒvŽZ‚·‚é‚æ[" << endl;
-			// Set filtered cloud to downsampled cloud
-			cloud_pass_downsampled_ = cloud_pass_;
+			// Do statisticalremoval and Set filtered cloud to downsampled cloud
+			statisticalRemoval(cloud_pass_, *cloud_pass_downsampled_, 50, 1.0);
 			//	Pointer for objects point cloud 
 			CloudPtr target_cloud;
 			calc_object_ = false;
@@ -646,6 +676,18 @@ public:
 					cout << "X: " << c[0] << endl;
 					cout << "Y: " << c[1] << endl;
 					cout << "Z: " << c[2] << endl;
+	
+					// Calculate object AABB
+					drawOBB_ = true;
+					pcl::MomentOfInertiaEstimation <PointType> feature_extractor;
+					feature_extractor.setInputCloud(temp_cloud);
+					feature_extractor.compute();
+					feature_extractor.getMomentOfInertia(moment_of_inertia_);
+					feature_extractor.getEccentricity(eccentricity_);
+					feature_extractor.getOBB(min_point_OBB_, max_point_OBB_, position_OBB_, rotational_matrix_OBB_);
+					feature_extractor.getEigenValues(major_value_, middle_value_, minor_value_);
+					feature_extractor.getEigenVectors(major_vector_, middle_vector_, minor_vector_);
+					feature_extractor.getMassCenter(mass_center_);
 				}
 				else
 				{
@@ -899,6 +941,20 @@ public:
 	// Variables for image
 	boost::shared_ptr<pcl::io::openni2::DepthImage> image_;
 	unsigned char* depth_data_;
+
+	// Variable for object OBB
+	bool drawOBB_ = false;
+	std::vector <float> moment_of_inertia_;
+	std::vector <float> eccentricity_;
+	RefPointType min_point_AABB_;
+	RefPointType max_point_AABB_;
+	RefPointType min_point_OBB_;
+	RefPointType max_point_OBB_;
+	RefPointType position_OBB_;
+	Eigen::Matrix3f rotational_matrix_OBB_;
+	float major_value_, middle_value_, minor_value_;
+	Eigen::Vector3f major_vector_, middle_vector_, minor_vector_;
+	Eigen::Vector3f mass_center_;
 };
 
 void
