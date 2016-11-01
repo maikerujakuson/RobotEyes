@@ -373,7 +373,7 @@ public:
 		FPS_CALC_BEGIN;
 		pcl::PassThrough<PointType> pass;
 		pass.setFilterFieldName("z");
-		pass.setFilterLimits(0.0, 1.5);
+		pass.setFilterLimits(0.0, 1.0);
 		//pass.setFilterLimits (0.0, 1.5);
 		//pass.setFilterLimits (0.0, 0.6);
 		pass.setKeepOrganized(false);
