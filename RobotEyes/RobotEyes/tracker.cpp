@@ -1,3 +1,4 @@
+
 #include <pcl/tracking/tracking.h>
 #include <pcl/tracking/particle_filter.h>
 #include <pcl/tracking/kld_adaptive_particle_filter_omp.h>
@@ -18,7 +19,7 @@
 #include <pcl/console/parse.h>
 #include <pcl/common/time.h>
 #include <pcl/common/centroid.h>
-#include <pcl/common/angles.h>>
+#include <pcl/common/angles.h>
 
 #include <pcl/visualization/cloud_viewer.h>
 #include <pcl/visualization/image_viewer.h>
@@ -51,6 +52,9 @@
 #include <pcl/common/transforms.h>
 
 #include <boost/format.hpp>
+
+#include <WinSock2.h>
+#include <iostream>
 
 #define FPS_CALC_BEGIN                          \
     static double duration = 0;                 \
@@ -96,6 +100,7 @@ public:
 	typedef typename ParticleFilter::CoherencePtr CoherencePtr;
 	typedef typename pcl::search::KdTree<PointType> KdTree;
 	typedef typename KdTree::Ptr KdTreePtr;
+	// CONSTRUCTOR
 	OpenNISegmentTracking(const std::string& device_id, int thread_nr, double downsampling_grid_size,
 		bool use_convex_hull,
 		bool visualize_non_downsample, bool visualize_particles,
@@ -110,6 +115,7 @@ public:
 		, visualize_particles_(visualize_particles)
 		, downsampling_grid_size_(downsampling_grid_size)
 	{
+		// INITIALIZE
 		KdTreePtr tree(new KdTree(false));
 		ne_.setSearchMethod(tree);
 		ne_.setRadiusSearch(0.03);
@@ -175,6 +181,27 @@ public:
 		coherence->setSearchMethod(search);
 		coherence->setMaximumDistance(0.01);
 		tracker_->setCloudCoherence(coherence);
+
+		// Initialize socket communication
+		// Start 
+		WSAStartup(MAKEWORD(2, 0), &wsaData_);
+		// Initialize receive socekt	
+		sock_ = socket(AF_INET, SOCK_DGRAM, 0);
+		// ???
+		addr_.sin_family = AF_INET;
+		// Bind IP address
+		addr_.sin_addr.S_un.S_addr = inet_addr("127.0.0.1");
+		// Bind	port number 
+		addr_.sin_port = htons(11111);
+		// Bind sockaddr to sock 
+		bind(sock_, (struct sockaddr *)&addr_, sizeof(addr_));
+		// Initialize readfds
+		FD_ZERO(&readfds_);
+		// Register sock with readfds
+		FD_SET(sock_, &readfds_);
+		// Set timeout
+		timeout_.tv_sec = 0;
+		timeout_.tv_usec = 0;
 	}
 
 	bool
@@ -639,10 +666,26 @@ public:
 		result.is_dense = true;
 	}
 
-	// Calculate object AABB
-	void calcAABB(const CloudConstPtr &cloud)
+	// Cheack if request has come from robot
+	bool isRequestCome()
 	{
-
+		// Clear fds
+		memcpy(&fds_, &readfds_, sizeof(fd_set));
+		// Wait untile fds becomes readable in timeout time
+		select(0, &fds_, NULL, NULL, &timeout_);
+		// Cheack readable data is in sock 
+		if (FD_ISSET(sock_, &fds_)) {
+			request_ = true;
+			//	Recieve data from sock
+			memset(buf_, 0, sizeof(buf_));
+			recv(sock_, buf_, sizeof(buf_), 0);
+			// Print data
+			//printf("%s\n", buf_);
+			cout << "Now request from robot has come." << endl;
+			cout << "Ready to calculate object to grasp...";
+			return true;
+		}
+		return false;
 	}
 
 	// Callback function when updating point cloud
@@ -666,15 +709,19 @@ public:
 		// Filter point cloud accuired from camera
 		filterPassThrough(cloud, *cloud_pass_);
 
+		// Cheack if request has come from robot
+		isRequestCome();
 
 		// Mode to calculate the centroid of object
-		if (calc_object_) {
+		if (calc_object_ || request_) {
 			cout << "ŒvŽZ‚·‚é‚æ[" << endl;
 			// Do statisticalremoval and Set filtered cloud to downsampled cloud
 			statisticalRemoval(cloud_pass_, *cloud_pass_downsampled_, 50, 1.0);
-			//	Pointer for objects point cloud 
+			//	Pointer for object's point cloud 
 			CloudPtr target_cloud;
+			// Reset flags
 			calc_object_ = false;
+			request_ = false;
 			// Segment plane from downsampled point cloud
 			// Get plane indices(inliers)
 			planeSegmentation(cloud_pass_downsampled_, *coefficients, *inliers);
@@ -989,6 +1036,7 @@ public:
 	double downsampling_time_;
 	double downsampling_grid_size_;
 	bool calc_object_ = false;
+	bool request_ = false;
 
 	// Variables for image
 	boost::shared_ptr<pcl::io::openni2::DepthImage> image_;
@@ -1008,6 +1056,17 @@ public:
 	Eigen::Vector3f major_vector_, middle_vector_, minor_vector_;
 	Eigen::Vector3f mass_center_;
 
+	// Variable Socket	
+	SOCKET sock_;
+	// Variable to store port and IP numbers
+	struct sockaddr_in addr_;
+	// ???
+	fd_set fds_, readfds_;
+	// Variable for received text
+	char buf_[2048];
+	// ???
+	WSADATA wsaData_;
+	struct timeval timeout_;
 };
 
 void
