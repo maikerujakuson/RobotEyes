@@ -53,6 +53,9 @@
 
 #include <boost/format.hpp>
 
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+
 #include <WinSock2.h>
 #include <iostream>
 
@@ -183,25 +186,33 @@ public:
 		tracker_->setCloudCoherence(coherence);
 
 		// Initialize socket communication
-		// Start 
-		WSAStartup(MAKEWORD(2, 0), &wsaData_);
-		// Initialize receive socekt	
-		sock_ = socket(AF_INET, SOCK_DGRAM, 0);
-		// ???
-		addr_.sin_family = AF_INET;
-		// Bind IP address
-		addr_.sin_addr.S_un.S_addr = inet_addr("127.0.0.1");
-		// Bind	port number 
-		addr_.sin_port = htons(11111);
-		// Bind sockaddr to sock 
-		bind(sock_, (struct sockaddr *)&addr_, sizeof(addr_));
-		// Initialize readfds
+		// Make socket object
+		sock_recv_ = socket(AF_INET, SOCK_DGRAM, 0);
+		sock_send_ = socket(AF_INET, SOCK_DGRAM, 0);
+
+		addr_recv_.sin_family = AF_INET;
+		addr_send_.sin_family = AF_INET;
+
+		addr_recv_.sin_addr.S_un.S_addr = inet_addr("127.0.0.1");
+		addr_send_.sin_addr.S_un.S_addr = inet_addr("127.0.0.1");
+
+		// Set different port number to each socket
+		addr_recv_.sin_port = htons(11111);
+		addr_send_.sin_port = htons(22222);
+
+		// Bind receiver socket 
+		bind(sock_recv_, (struct sockaddr *)&addr_recv_, sizeof(addr_recv_));
+
+		// fd_setÇÃèâä˙âªÇµÇ‹Ç∑
 		FD_ZERO(&readfds_);
-		// Register sock with readfds
-		FD_SET(sock_, &readfds_);
-		// Set timeout
-		timeout_.tv_sec = 0;
-		timeout_.tv_usec = 0;
+
+		// selectÇ≈ë“Ç¬ì«Ç›çûÇ›É\ÉPÉbÉgÇ∆ÇµÇƒsock1Çìoò^ÇµÇ‹Ç∑
+		FD_SET(sock_recv_, &readfds_);
+
+		tv_.tv_sec = 0;
+		tv_.tv_usec = 0;
+
+
 	}
 
 	bool
@@ -305,7 +316,7 @@ public:
 			Eigen::Vector3f position(position_OBB_.x, position_OBB_.y, position_OBB_.z);
 			Eigen::Quaternionf quat(rotational_matrix_OBB_);
 			//viz.addCube(position, quat, max_point_OBB_.x - min_point_OBB_.x, max_point_OBB_.y - min_point_OBB_.y, max_point_OBB_.z - min_point_OBB_.z, "OBB");
-			
+
 			// Calculate the position and the pose of object
 			pcl::PointXYZ center(mass_center_(0), mass_center_(1), mass_center_(2));
 			pcl::PointXYZ x_axis(major_vector_(0) + mass_center_(0), major_vector_(1) + mass_center_(1), major_vector_(2) + mass_center_(2));
@@ -329,28 +340,28 @@ public:
 			p6_ = rotational_matrix_OBB_ * p6_ + position;
 			p7_ = rotational_matrix_OBB_ * p7_ + position;
 			p8_ = rotational_matrix_OBB_ * p8_ + position;
-			
-			pcl::PointXYZ pt1 (p1_ (0), p1_ (1), p1_ (2));
-			pcl::PointXYZ pt2 (p2_ (0), p2_ (1), p2_ (2));
-			pcl::PointXYZ pt3 (p3_ (0), p3_ (1), p3_ (2));
-			pcl::PointXYZ pt4 (p4_ (0), p4_ (1), p4_ (2));
-			pcl::PointXYZ pt5 (p5_ (0), p5_ (1), p5_ (2));
-			pcl::PointXYZ pt6 (p6_ (0), p6_ (1), p6_ (2));
-			pcl::PointXYZ pt7 (p7_ (0), p7_ (1), p7_ (2));
-			pcl::PointXYZ pt8 (p8_ (0), p8_ (1), p8_ (2));
 
-			viz.addLine (pt1, pt2, 1.0, 0.0, 0.0, "1 edge");
-			viz.addLine (pt1, pt4, 1.0, 0.0, 0.0, "2 edge");
-			viz.addLine (pt1, pt5, 1.0, 0.0, 0.0, "3 edge");
-			viz.addLine (pt5, pt6, 1.0, 0.0, 0.0, "4 edge");
-			viz.addLine (pt5, pt8, 1.0, 0.0, 0.0, "5 edge");
-			viz.addLine (pt2, pt6, 1.0, 0.0, 0.0, "6 edge");
-			viz.addLine (pt6, pt7, 1.0, 0.0, 0.0, "7 edge");
-			viz.addLine (pt7, pt8, 1.0, 0.0, 0.0, "8 edge");
-			viz.addLine (pt2, pt3, 1.0, 0.0, 0.0, "9 edge");
-			viz.addLine (pt4, pt8, 1.0, 0.0, 0.0, "10 edge");
-			viz.addLine (pt3, pt4, 1.0, 0.0, 0.0, "11 edge");
-			viz.addLine (pt3, pt7, 1.0, 0.0, 0.0, "12 edge");
+			pcl::PointXYZ pt1(p1_(0), p1_(1), p1_(2));
+			pcl::PointXYZ pt2(p2_(0), p2_(1), p2_(2));
+			pcl::PointXYZ pt3(p3_(0), p3_(1), p3_(2));
+			pcl::PointXYZ pt4(p4_(0), p4_(1), p4_(2));
+			pcl::PointXYZ pt5(p5_(0), p5_(1), p5_(2));
+			pcl::PointXYZ pt6(p6_(0), p6_(1), p6_(2));
+			pcl::PointXYZ pt7(p7_(0), p7_(1), p7_(2));
+			pcl::PointXYZ pt8(p8_(0), p8_(1), p8_(2));
+
+			viz.addLine(pt1, pt2, 1.0, 0.0, 0.0, "1 edge");
+			viz.addLine(pt1, pt4, 1.0, 0.0, 0.0, "2 edge");
+			viz.addLine(pt1, pt5, 1.0, 0.0, 0.0, "3 edge");
+			viz.addLine(pt5, pt6, 1.0, 0.0, 0.0, "4 edge");
+			viz.addLine(pt5, pt8, 1.0, 0.0, 0.0, "5 edge");
+			viz.addLine(pt2, pt6, 1.0, 0.0, 0.0, "6 edge");
+			viz.addLine(pt6, pt7, 1.0, 0.0, 0.0, "7 edge");
+			viz.addLine(pt7, pt8, 1.0, 0.0, 0.0, "8 edge");
+			viz.addLine(pt2, pt3, 1.0, 0.0, 0.0, "9 edge");
+			viz.addLine(pt4, pt8, 1.0, 0.0, 0.0, "10 edge");
+			viz.addLine(pt3, pt4, 1.0, 0.0, 0.0, "11 edge");
+			viz.addLine(pt3, pt7, 1.0, 0.0, 0.0, "12 edge");
 
 		}
 
@@ -417,7 +428,7 @@ public:
 
 	// Remove outliers using a statisticaloutlierremoval filter
 	void statisticalRemoval(const CloudConstPtr &cloud,
-		Cloud &result, int numOfNeighbors,double sd)
+		Cloud &result, int numOfNeighbors, double sd)
 	{
 		pcl::StatisticalOutlierRemoval<PointType> sor;
 		sor.setInputCloud(cloud);
@@ -672,13 +683,13 @@ public:
 		// Clear fds
 		memcpy(&fds_, &readfds_, sizeof(fd_set));
 		// Wait untile fds becomes readable in timeout time
-		select(0, &fds_, NULL, NULL, &timeout_);
+		select(0, &fds_, NULL, NULL, &tv_);
 		// Cheack readable data is in sock 
-		if (FD_ISSET(sock_, &fds_)) {
+		if (FD_ISSET(sock_recv_, &fds_)) {
 			request_ = true;
 			//	Recieve data from sock
 			memset(buf_, 0, sizeof(buf_));
-			recv(sock_, buf_, sizeof(buf_), 0);
+			recv(sock_recv_, buf_, sizeof(buf_), 0);
 			// Print data
 			//printf("%s\n", buf_);
 			cout << "Now request from robot has come." << endl;
@@ -706,6 +717,31 @@ public:
 		// Variable for plane model
 		pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients());
 		pcl::PointIndices::Ptr inliers(new pcl::PointIndices());
+
+		// Draw color image 
+		if (cloud->isOrganized()) {
+			cv::Mat color_img = cv::Mat(cloud->height, cloud->width, CV_8UC3);
+			cv::Mat depth32F_img = cv::Mat(cloud->height, cloud->width, CV_32FC1);
+			cv::Mat depth_img = cv::Mat(cloud->height, cloud->width, CV_8UC1);
+			for (int h = 0; h < color_img.rows; h++) {
+				for (int w = 0; w < color_img.cols; w++) {
+					PointType point = cloud->at(w, h);
+
+					Eigen::Vector3i rgb = point.getRGBVector3i();
+
+					color_img.at<cv::Vec3b>(h, w)[0] = rgb[2];
+					color_img.at<cv::Vec3b>(h, w)[1] = rgb[1];
+					color_img.at<cv::Vec3b>(h, w)[2] = rgb[0];
+
+					depth32F_img.at<float>(h, w) = cloud->at(w, h).z;
+				}
+			}
+			cv::normalize(depth32F_img, depth_img, 0, 255, CV_MINMAX, CV_8UC1);
+			cv::imshow("Color Image", color_img);
+			cv::imshow("Depth Image", depth_img);
+			cv::waitKey(5);
+		}
+
 		// Filter point cloud accuired from camera
 		filterPassThrough(cloud, *cloud_pass_);
 
@@ -771,7 +807,7 @@ public:
 					cout << "X: " << c[0] << endl;
 					cout << "Y: " << c[1] << endl;
 					cout << "Z: " << c[2] << endl;
-	
+
 					// Calculate object AABB
 					drawOBB_ = true;
 					pcl::MomentOfInertiaEstimation <PointType> feature_extractor;
@@ -783,6 +819,13 @@ public:
 					feature_extractor.getEigenValues(major_value_, middle_value_, minor_value_);
 					feature_extractor.getEigenVectors(major_vector_, middle_vector_, minor_vector_);
 					feature_extractor.getMassCenter(mass_center_);
+
+					// Sending data
+					memset(buf_, 0, sizeof(buf_));
+					sprintf(buf_, "%f %f %f", mass_center_.x(), mass_center_.y(), mass_center_.z());
+					sendto(sock_send_,
+						buf_, strlen(buf_), 0, (struct sockaddr *)&addr_send_, sizeof(addr_send_));
+
 				}
 				else
 				{
@@ -938,28 +981,35 @@ public:
 
 	// Callback function when image updated
 	void
-		image_cb(const boost::shared_ptr<pcl::io::openni2::DepthImage>& depth)
+		image_callback(const boost::shared_ptr<pcl::io::openni2::Image>& image)
 	{
 		// Calculate the FPS of image viewer
-		FPS_CALC("image callback");
+		//FPS_CALC("image callback");
 		// Lock image_mutex
 		boost::mutex::scoped_lock lock(image_mutex_);
 		// Set updated image to member image
 		image_ = image;
+		//// Cheack if updated image is suited to pcl image viewer 
+		//if (image->getEncoding() != pcl::io::openni2::Image::RGB)
+		//{
+		//	cout << "Fuck you??" << endl;
+		//	if (rgb_data_size_ < image->getWidth() * image->getHeight())
+		//	{
+		//		if (rgb_data_)
+		//			delete[] rgb_data_;
+		//		rgb_data_size_ = image->getWidth() * image->getHeight();
+		//		rgb_data_ = new unsigned char[rgb_data_size_ * 3];
+		//	}
+		//	image_->fillRGB(image_->getWidth(), image_->getHeight(), rgb_data_);
+		//}
 
-		// Cheack if updated image is suited to pcl image viewer 
-		if (image->getEncoding() != pcl::io::openni2::Image::RGB)
-		{
-			// Make suited image 
-			if (depth_data_ < image->getWidth() * image->getHeight())
-			{
-				if (depth_data_)
-					delete[] depth_data_;
-				depth_data_ = image->getWidth() * image->getHeight();
-				depth_data_ = new unsigned char[depth_data_ * 3];
-			}
-			image_->fillRGB(image_->getWidth(), image_->getHeight(), rgb_data_);
-		}
+		//if (image) {
+		//	if (image->getEncoding() == pcl::io::openni2::Image::RGB)
+		//		imgViewer_->addRGBImage((const unsigned char*)image->getData(), image->getWidth(), image->getHeight());
+		//	else
+		//		imgViewer_->addRGBImage(rgb_data_, image->getWidth(), image->getHeight());
+		//	imgViewer_->spinOnce();
+		//}
 
 	}
 
@@ -995,7 +1045,15 @@ public:
 		viewer_.runOnVisualizationThread(boost::bind(&OpenNISegmentTracking::viz_cb, this, _1), "viz_cb");
 		viewer_.registerKeyboardCallback(&OpenNISegmentTracking::keyboard_callback, *this);
 
-			
+		// Image 
+		boost::signals2::connection image_connection;
+		if (interface->providesCallback<void(const boost::shared_ptr<pcl::io::openni2::Image>&)>())
+		{
+			//imgViewer_.reset(new pcl::visualization::ImageViewer("PCL OpenNI image"));
+			boost::function<void(const boost::shared_ptr<pcl::io::openni2::Image>&) > image_cb = boost::bind(&OpenNISegmentTracking::image_callback, this, _1);
+			image_connection = interface->registerCallback(image_cb);
+		}
+
 		// Start the streams
 		interface->start();
 
@@ -1009,7 +1067,7 @@ public:
 	}
 
 	pcl::visualization::CloudViewer viewer_;
-	pcl::visualization::ImageViewer imgViewer_;
+	//boost::shared_ptr<pcl::visualization::ImageViewer> imgViewer_;
 
 	pcl::PointCloud<pcl::Normal>::Ptr normals_;
 	CloudPtr cloud_pass_;
@@ -1039,8 +1097,9 @@ public:
 	bool request_ = false;
 
 	// Variables for image
-	boost::shared_ptr<pcl::io::openni2::DepthImage> image_;
-	unsigned char* depth_data_;
+	boost::shared_ptr<pcl::io::openni2::Image> image_;
+	unsigned char* rgb_data_;
+	unsigned rgb_data_size_;
 
 	// Variable for object OBB
 	bool drawOBB_ = false;
@@ -1056,17 +1115,20 @@ public:
 	Eigen::Vector3f major_vector_, middle_vector_, minor_vector_;
 	Eigen::Vector3f mass_center_;
 
-	// Variable Socket	
-	SOCKET sock_;
-	// Variable to store port and IP numbers
-	struct sockaddr_in addr_;
-	// ???
+	// Socket for receiving
+	SOCKET sock_recv_;
+	// Socket for sending
+	SOCKET sock_send_;
+	// Structure to store socket adress
+	struct sockaddr_in addr_recv_, addr_send_;
+	// Variable to use select()
 	fd_set fds_, readfds_;
-	// Variable for received text
+	// Variable for text
 	char buf_[2048];
-	// ???
+	// Structure to store Window socket information
 	WSADATA wsaData_;
-	struct timeval timeout_;
+	// Structure for timeout
+	struct timeval tv_;
 };
 
 void

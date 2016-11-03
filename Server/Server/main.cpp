@@ -1,73 +1,80 @@
-#define NOMINMAX
 #include <stdio.h>
-#include <iostream>
-#include <WinSock2.h>
 #include <winsock2.h>
+#include <Eigen\Dense>
 
 int
 main()
 {
-	// Variable Socket	
-	SOCKET sock;
-	// Variable to store port and IP numbers
-	struct sockaddr_in addr1;
-	// ???
+	// Socket for receiving
+	SOCKET sock_recv;
+	// Socket for sending
+	SOCKET sock_send;
+	// Structure to store socket adress
+	struct sockaddr_in addr_recv, addr_send;
+	// Variable to use select()
 	fd_set fds, readfds;
-	// Variable for received text
+	// Variable for text
 	char buf[2048];
-	// ???
+	// Structure to store Window socket information
 	WSADATA wsaData;
 
-	// Start 
+	Eigen::Vector4f vec;
+	vec.x() = vec.y() = vec.z() = 1.11111f;
+	
+	// ???
 	WSAStartup(MAKEWORD(2, 0), &wsaData);
 
-	// Initialize receive socekt	
-	sock = socket(AF_INET, SOCK_DGRAM, 0);
+	// Make socket object
+	sock_recv = socket(AF_INET, SOCK_DGRAM, 0);
+	sock_send = socket(AF_INET, SOCK_DGRAM, 0);
 
-	// ???
-	addr1.sin_family = AF_INET;
+	addr_recv.sin_family = AF_INET;
+	addr_send.sin_family = AF_INET;
 
-	// Bind IP address
-	addr1.sin_addr.S_un.S_addr = inet_addr("127.0.0.1");
-	
-	// Bind	port number 
-	addr1.sin_port = htons(11111);
+	addr_recv.sin_addr.S_un.S_addr = inet_addr("127.0.0.1");
+	addr_send.sin_addr.S_un.S_addr = inet_addr("127.0.0.1");
 
-	// Bind sockaddr to sock 
-	bind(sock, (struct sockaddr *)&addr1, sizeof(addr1));
+	// Set different port number to each socket
+	addr_recv.sin_port = htons(11111);
+	addr_send.sin_port = htons(22222);
 
-	// Initialize readfds
+	// Bind receiver socket 
+	bind(sock_recv, (struct sockaddr *)&addr_recv, sizeof(addr_recv));
+
+	// fd_setの初期化します
 	FD_ZERO(&readfds);
 
-	// Register sock with readfds
-	FD_SET(sock, &readfds);
+	// selectで待つ読み込みソケットとしてsock1を登録します
+	FD_SET(sock_recv, &readfds);
 
-	// Set timeout
-	struct timeval timeout;
-	timeout.tv_sec = 0;
-	timeout.tv_usec = 0;
-
-	// Reapt listen
+	// Do listen untile recieving data
 	while (1) {
-		// Clear fds
+		// Initialize fds
 		memcpy(&fds, &readfds, sizeof(fd_set));
 
-		// Wait untile fds becomes readable in timeout time
-		select(0, &fds, NULL, NULL, &timeout);
+		// fdsに設定されたソケットが読み込み可能になるまで待ちます
+		select(0, &fds, NULL, NULL, NULL);
 
-		// Cheack readable data is in sock 
-		if (FD_ISSET(sock, &fds)) {
-			//	Recieve data from sock
+		// sock1に読み込み可能データがある場合
+		if (FD_ISSET(sock_recv, &fds)) {
+			// sock1からデータを受信して表示します
 			memset(buf, 0, sizeof(buf));
-			recv(sock, buf, sizeof(buf), 0);
-			// Print data
+			recv(sock_recv, buf, sizeof(buf), 0);
 			printf("%s\n", buf);
+			break;
 		}
 	}
 
-	// Close sock 
-	closesocket(sock);
-	// Clean up socket communication
+	// Sending data
+	memset(buf, 0, sizeof(buf));
+	sprintf(buf, "%f %f %f", vec.x(),vec.y(),vec.z());
+	sendto(sock_send,
+		buf, strlen(buf), 0, (struct sockaddr *)&addr_send, sizeof(addr_send));
+	
+	// このサンプルでは、ここへは到達しません
+	closesocket(sock_recv);
+	closesocket(sock_send);
+
 	WSACleanup();
 
 	return 0;
