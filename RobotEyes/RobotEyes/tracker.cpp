@@ -408,7 +408,7 @@ public:
 	void filterPassThrough(const CloudConstPtr &cloud, Cloud &result)
 	{
 		CloudPtr cloud_tmp(new Cloud);
-		FPS_CALC_BEGIN;
+		//FPS_CALC_BEGIN;
 		pcl::PassThrough<PointType> pass;
 		pass.setFilterFieldName("z");
 		pass.setFilterLimits(0.0, 1.0);
@@ -423,7 +423,7 @@ public:
 		pass.setInputCloud(cloud_tmp);
 		pass.filter(result);
 
-		FPS_CALC_END("filterPassThrough");
+		//FPS_CALC_END("filterPassThrough");
 	}
 
 	// Remove outliers using a statisticaloutlierremoval filter
@@ -444,7 +444,7 @@ public:
 		std::vector<pcl::PointIndices> &cluster_indices)
 	{
 		// Begin calculation of FPS
-		FPS_CALC_BEGIN;
+		//FPS_CALC_BEGIN;
 		// Make euclideancluster object
 		pcl::EuclideanClusterExtraction<PointType> ec;
 		// Use kdtree for clustering
@@ -459,7 +459,7 @@ public:
 		ec.setInputCloud(cloud);
 		ec.extract(cluster_indices);
 		// End calculation of FPS
-		FPS_CALC_END("euclideanSegmentation");
+		//FPS_CALC_END("euclideanSegmentation");
 	}
 
 
@@ -467,7 +467,7 @@ public:
 	void gridSample(const CloudConstPtr &cloud, Cloud &result, double leaf_size = 0.01)
 	{
 		// Begin calculation of FPS
-		FPS_CALC_BEGIN;
+		//FPS_CALC_BEGIN;
 		// Get the current time for FPS
 		double start = pcl::getTime();
 		// Make voxelgrid object for filtering
@@ -487,12 +487,12 @@ public:
 		// Calculate the computation time
 		downsampling_time_ = end - start;
 		// Print FPS calculate time
-		FPS_CALC_END("gridSample");
+		//FPS_CALC_END("gridSample");
 	}
 
 	void gridSampleApprox(const CloudConstPtr &cloud, Cloud &result, double leaf_size = 0.01)
 	{
-		FPS_CALC_BEGIN;
+		//FPS_CALC_BEGIN;
 		double start = pcl::getTime();
 		//pcl::VoxelGrid<PointType> grid;
 		pcl::ApproximateVoxelGrid<PointType> grid;
@@ -502,7 +502,7 @@ public:
 		//result = *cloud;
 		double end = pcl::getTime();
 		downsampling_time_ = end - start;
-		FPS_CALC_END("gridSample");
+		//FPS_CALC_END("gridSample");
 	}
 
 	// Function to segment plane from point cloud
@@ -511,7 +511,7 @@ public:
 		pcl::PointIndices &inliers)
 	{
 		// Begin calculation for fps
-		FPS_CALC_BEGIN;
+		//FPS_CALC_BEGIN;
 		// Make sacsegmentation object
 		pcl::SACSegmentation<PointType> seg;
 		// Optimize the estimated plane coefficients to reduce the mean-squared-error
@@ -529,7 +529,7 @@ public:
 		// Get the result (inliers: indices for plane point cloud, coefficients: plane coefficents)
 		seg.segment(inliers, coefficients);
 		// End calcuation for FPS
-		FPS_CALC_END("planeSegmentation");
+		//FPS_CALC_END("planeSegmentation");
 	}
 
 	// Project points onto plane
@@ -538,7 +538,7 @@ public:
 		const pcl::ModelCoefficients::ConstPtr &coefficients)
 	{
 		// Begin calculation of FPS
-		FPS_CALC_BEGIN;
+		//FPS_CALC_BEGIN;
 		// Make projectinliers object
 		pcl::ProjectInliers<PointType> proj;
 		// Use plane model
@@ -550,7 +550,7 @@ public:
 		// Get filtered cloud
 		proj.filter(result);
 		// End calculation of FPS
-		FPS_CALC_END("planeProjection");
+		//FPS_CALC_END("planeProjection");
 	}
 
 	// Calculate convex hull of projected plane
@@ -559,7 +559,7 @@ public:
 		std::vector<pcl::Vertices> &hull_vertices)
 	{
 		// Begin calculation of FPS
-		FPS_CALC_BEGIN;
+		//FPS_CALC_BEGIN;
 		// Make convex hull object
 		pcl::ConvexHull<PointType> chull;
 		// Set input cloud
@@ -567,26 +567,26 @@ public:
 		// Get convex hull
 		chull.reconstruct(*cloud_hull_, hull_vertices);
 		// End calculation of FPS
-		FPS_CALC_END("convexHull");
+		//FPS_CALC_END("convexHull");
 	}
 
 	void normalEstimation(const CloudConstPtr &cloud,
 		pcl::PointCloud<pcl::Normal> &result)
 	{
-		FPS_CALC_BEGIN;
+		//FPS_CALC_BEGIN;
 		ne_.setInputCloud(cloud);
 		ne_.compute(result);
-		FPS_CALC_END("normalEstimation");
+		//FPS_CALC_END("normalEstimation");
 	}
 
 	void tracking(const RefCloudConstPtr &cloud)
 	{
 		double start = pcl::getTime();
-		FPS_CALC_BEGIN;
+		//FPS_CALC_BEGIN;
 		tracker_->setInputCloud(cloud);
 		tracker_->compute();
 		double end = pcl::getTime();
-		FPS_CALC_END("tracking");
+		//FPS_CALC_END("tracking");
 		tracking_time_ = end - start;
 	}
 
@@ -703,13 +703,13 @@ public:
 	void
 		cloud_cb(const CloudConstPtr &cloud)
 	{
-		cout << "accquire point cloud" << endl;
+		//cout << "accquire point cloud" << endl;
 		// Lock mtx_ (why?) 
 		boost::mutex::scoped_lock lock(mtx_);
 		// Get the current time for FPS
 		double start = pcl::getTime();
 		// Begin calculation of FPS
-		FPS_CALC_BEGIN;
+		//FPS_CALC_BEGIN;
 		// Reset cloud_pass (why?)
 		cloud_pass_.reset(new Cloud);
 		// Reset cloud_pass_downsampled_ (why?)
@@ -739,7 +739,7 @@ public:
 			cv::normalize(depth32F_img, depth_img, 0, 255, CV_MINMAX, CV_8UC1);
 			cv::imshow("Color Image", color_img);
 			cv::imshow("Depth Image", depth_img);
-			cv::waitKey(5);
+			cv::waitKey(7);
 		}
 
 		// Filter point cloud accuired from camera
@@ -974,7 +974,7 @@ public:
 		new_cloud_ = true;
 		double end = pcl::getTime();
 		computation_time_ = end - start;
-		FPS_CALC_END("computation");
+		//FPS_CALC_END("computation");
 		counter_++;
 	}
 
