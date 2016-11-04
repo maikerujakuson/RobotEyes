@@ -55,6 +55,7 @@
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
 
 #include <WinSock2.h>
 #include <iostream>
@@ -405,9 +406,17 @@ public:
 		// Cloud is not new
 		new_cloud_ = false;
 
+
+		// Draw image
 		if (!color_img_.empty()) {
 			cv::imshow("Color Image", color_img_);
 			cv::imshow("Depth Image", depth_img_);
+			cv::Mat gray, edge, draw;
+			cv::cvtColor(color_img_, gray, CV_BGR2GRAY);
+			cv::Canny(gray, edge, 50, 150, 3);
+			edge.convertTo(draw, CV_8UC1);
+			cv::imshow("Canny edge", draw);
+
 			cv::waitKey(30);
 		}
 	}
