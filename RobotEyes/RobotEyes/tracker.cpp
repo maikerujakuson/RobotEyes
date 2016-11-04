@@ -312,10 +312,8 @@ public:
 		if (new_cloud_ && drawOBB_)
 		{
 			viz.removeAllShapes();
-			//viz.removeShape("OBB");
 			Eigen::Vector3f position(position_OBB_.x, position_OBB_.y, position_OBB_.z);
 			Eigen::Quaternionf quat(rotational_matrix_OBB_);
-			//viz.addCube(position, quat, max_point_OBB_.x - min_point_OBB_.x, max_point_OBB_.y - min_point_OBB_.y, max_point_OBB_.z - min_point_OBB_.z, "OBB");
 
 			// Calculate the position and the pose of object
 			pcl::PointXYZ center(mass_center_(0), mass_center_(1), mass_center_(2));
@@ -350,19 +348,23 @@ public:
 			pcl::PointXYZ pt7(p7_(0), p7_(1), p7_(2));
 			pcl::PointXYZ pt8(p8_(0), p8_(1), p8_(2));
 
-			viz.addLine(pt1, pt2, 1.0, 0.0, 0.0, "1 edge");
-			viz.addLine(pt1, pt4, 1.0, 0.0, 0.0, "2 edge");
-			viz.addLine(pt1, pt5, 1.0, 0.0, 0.0, "3 edge");
-			viz.addLine(pt5, pt6, 1.0, 0.0, 0.0, "4 edge");
-			viz.addLine(pt5, pt8, 1.0, 0.0, 0.0, "5 edge");
-			viz.addLine(pt2, pt6, 1.0, 0.0, 0.0, "6 edge");
-			viz.addLine(pt6, pt7, 1.0, 0.0, 0.0, "7 edge");
-			viz.addLine(pt7, pt8, 1.0, 0.0, 0.0, "8 edge");
-			viz.addLine(pt2, pt3, 1.0, 0.0, 0.0, "9 edge");
-			viz.addLine(pt4, pt8, 1.0, 0.0, 0.0, "10 edge");
-			viz.addLine(pt3, pt4, 1.0, 0.0, 0.0, "11 edge");
-			viz.addLine(pt3, pt7, 1.0, 0.0, 0.0, "12 edge");
+			viz.addLine(pt1, pt2, 1.0, 1.0, 0.0, "1 edge");
+			viz.addLine(pt1, pt4, 1.0, 1.0, 0.0, "2 edge");
+			viz.addLine(pt1, pt5, 1.0, 1.0, 0.0, "3 edge");
+			viz.addLine(pt5, pt6, 1.0, 1.0, 0.0, "4 edge");
+			viz.addLine(pt5, pt8, 1.0, 1.0, 0.0, "5 edge");
+			viz.addLine(pt2, pt6, 1.0, 1.0, 0.0, "6 edge");
+			viz.addLine(pt6, pt7, 1.0, 1.0, 0.0, "7 edge");
+			viz.addLine(pt7, pt8, 1.0, 1.0, 0.0, "8 edge");
+			viz.addLine(pt2, pt3, 1.0, 1.0, 0.0, "9 edge");
+			viz.addLine(pt4, pt8, 1.0, 1.0, 0.0, "10 edge");
+			viz.addLine(pt3, pt4, 1.0, 1.0, 0.0, "11 edge");
+			viz.addLine(pt3, pt7, 1.0, 1.0, 0.0, "12 edge");
 
+			// Draw major axis
+			viz.addLine(center, x_axis, 1.0f, 0.0f, 0.0f, "major eigen vector");
+			viz.addLine(center, y_axis, 0.0f, 1.0f, 0.0f, "middle eigen vector");
+			viz.addLine(center, z_axis, 0.0f, 0.0f, 1.0f, "minor eigen vector");
 		}
 
 		// When tracking is available 
@@ -402,6 +404,12 @@ public:
 		}
 		// Cloud is not new
 		new_cloud_ = false;
+
+		if (!color_img_.empty()) {
+			cv::imshow("Color Image", color_img_);
+			cv::imshow("Depth Image", depth_img_);
+			cv::waitKey(30);
+		}
 	}
 
 	// Filter point cloud by distance
@@ -719,28 +727,25 @@ public:
 		pcl::PointIndices::Ptr inliers(new pcl::PointIndices());
 
 		// Draw color image 
-		if (cloud->isOrganized()) {
-			cv::Mat color_img = cv::Mat(cloud->height, cloud->width, CV_8UC3);
-			cv::Mat depth32F_img = cv::Mat(cloud->height, cloud->width, CV_32FC1);
-			cv::Mat depth_img = cv::Mat(cloud->height, cloud->width, CV_8UC1);
-			for (int h = 0; h < color_img.rows; h++) {
-				for (int w = 0; w < color_img.cols; w++) {
+		//if (cloud->isOrganized()) {
+			color_img_ = cv::Mat(cloud->height, cloud->width, CV_8UC3);
+			depth32F_img_ = cv::Mat(cloud->height, cloud->width, CV_32FC1);
+			depth_img_ = cv::Mat(cloud->height, cloud->width, CV_8UC1);
+			for (int h = 0; h < color_img_.rows; h++) {
+				for (int w = 0; w < color_img_.cols; w++) {
 					PointType point = cloud->at(w, h);
 
 					Eigen::Vector3i rgb = point.getRGBVector3i();
 
-					color_img.at<cv::Vec3b>(h, w)[0] = rgb[2];
-					color_img.at<cv::Vec3b>(h, w)[1] = rgb[1];
-					color_img.at<cv::Vec3b>(h, w)[2] = rgb[0];
+					color_img_.at<cv::Vec3b>(h, w)[0] = rgb[2];
+					color_img_.at<cv::Vec3b>(h, w)[1] = rgb[1];
+					color_img_.at<cv::Vec3b>(h, w)[2] = rgb[0];
 
-					depth32F_img.at<float>(h, w) = cloud->at(w, h).z;
+					depth32F_img_.at<float>(h, w) = cloud->at(w, h).z;
 				}
 			}
-			cv::normalize(depth32F_img, depth_img, 0, 255, CV_MINMAX, CV_8UC1);
-			cv::imshow("Color Image", color_img);
-			cv::imshow("Depth Image", depth_img);
-			cv::waitKey(7);
-		}
+			cv::normalize(depth32F_img_, depth_img_, 0, 255, CV_MINMAX, CV_8UC1);
+		//}
 
 		// Filter point cloud accuired from camera
 		filterPassThrough(cloud, *cloud_pass_);
@@ -819,6 +824,10 @@ public:
 					feature_extractor.getEigenValues(major_value_, middle_value_, minor_value_);
 					feature_extractor.getEigenVectors(major_vector_, middle_vector_, minor_vector_);
 					feature_extractor.getMassCenter(mass_center_);
+
+					major_vector_ *= 0.2;
+					middle_vector_ *= 0.2;
+					minor_vector_ *= 0.2;
 
 					// Sending data
 					memset(buf_, 0, sizeof(buf_));
@@ -978,41 +987,6 @@ public:
 		counter_++;
 	}
 
-
-	// Callback function when image updated
-	void
-		image_callback(const boost::shared_ptr<pcl::io::openni2::Image>& image)
-	{
-		// Calculate the FPS of image viewer
-		//FPS_CALC("image callback");
-		// Lock image_mutex
-		boost::mutex::scoped_lock lock(image_mutex_);
-		// Set updated image to member image
-		image_ = image;
-		//// Cheack if updated image is suited to pcl image viewer 
-		//if (image->getEncoding() != pcl::io::openni2::Image::RGB)
-		//{
-		//	cout << "Fuck you??" << endl;
-		//	if (rgb_data_size_ < image->getWidth() * image->getHeight())
-		//	{
-		//		if (rgb_data_)
-		//			delete[] rgb_data_;
-		//		rgb_data_size_ = image->getWidth() * image->getHeight();
-		//		rgb_data_ = new unsigned char[rgb_data_size_ * 3];
-		//	}
-		//	image_->fillRGB(image_->getWidth(), image_->getHeight(), rgb_data_);
-		//}
-
-		//if (image) {
-		//	if (image->getEncoding() == pcl::io::openni2::Image::RGB)
-		//		imgViewer_->addRGBImage((const unsigned char*)image->getData(), image->getWidth(), image->getHeight());
-		//	else
-		//		imgViewer_->addRGBImage(rgb_data_, image->getWidth(), image->getHeight());
-		//	imgViewer_->spinOnce();
-		//}
-
-	}
-
 	// Keyboard callback function
 	void
 		keyboard_callback(const pcl::visualization::KeyboardEvent& event, void*)
@@ -1045,14 +1019,6 @@ public:
 		viewer_.runOnVisualizationThread(boost::bind(&OpenNISegmentTracking::viz_cb, this, _1), "viz_cb");
 		viewer_.registerKeyboardCallback(&OpenNISegmentTracking::keyboard_callback, *this);
 
-		// Image 
-		boost::signals2::connection image_connection;
-		if (interface->providesCallback<void(const boost::shared_ptr<pcl::io::openni2::Image>&)>())
-		{
-			//imgViewer_.reset(new pcl::visualization::ImageViewer("PCL OpenNI image"));
-			boost::function<void(const boost::shared_ptr<pcl::io::openni2::Image>&) > image_cb = boost::bind(&OpenNISegmentTracking::image_callback, this, _1);
-			image_connection = interface->registerCallback(image_cb);
-		}
 
 		// Start the streams
 		interface->start();
@@ -1067,7 +1033,6 @@ public:
 	}
 
 	pcl::visualization::CloudViewer viewer_;
-	//boost::shared_ptr<pcl::visualization::ImageViewer> imgViewer_;
 
 	pcl::PointCloud<pcl::Normal>::Ptr normals_;
 	CloudPtr cloud_pass_;
@@ -1081,7 +1046,6 @@ public:
 
 	std::string device_id_;
 	boost::mutex mtx_;
-	boost::mutex image_mutex_;
 	bool new_cloud_;
 	pcl::NormalEstimationOMP<PointType, pcl::Normal> ne_; // to store threadpool
 	boost::shared_ptr<ParticleFilter> tracker_;
@@ -1095,11 +1059,6 @@ public:
 	double downsampling_grid_size_;
 	bool calc_object_ = false;
 	bool request_ = false;
-
-	// Variables for image
-	boost::shared_ptr<pcl::io::openni2::Image> image_;
-	unsigned char* rgb_data_;
-	unsigned rgb_data_size_;
 
 	// Variable for object OBB
 	bool drawOBB_ = false;
@@ -1129,6 +1088,11 @@ public:
 	WSADATA wsaData_;
 	// Structure for timeout
 	struct timeval tv_;
+
+	// Variables for image
+	cv::Mat color_img_;
+	cv::Mat depth32F_img_;
+	cv::Mat depth_img_;
 };
 
 void
