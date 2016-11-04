@@ -814,13 +814,6 @@ public:
 					CloudPtr temp_cloud(new Cloud);
 					// Extract 0th object cluster from point cloud
 					extractSegmentCluster(target_cloud, cluster_indices, 0, *temp_cloud);
-					// Vector for centroid of object
-					Eigen::Vector4f c;
-					// Compute the centroid of extracted object cloud
-					pcl::compute3DCentroid<RefPointType>(*temp_cloud, c);
-					cout << "X: " << c[0] << endl;
-					cout << "Y: " << c[1] << endl;
-					cout << "Z: " << c[2] << endl;
 
 					// Calculate object AABB
 					drawOBB_ = true;
@@ -833,7 +826,30 @@ public:
 					feature_extractor.getEigenValues(major_value_, middle_value_, minor_value_);
 					feature_extractor.getEigenVectors(major_vector_, middle_vector_, minor_vector_);
 					feature_extractor.getMassCenter(mass_center_);
+					
+					// Calculate roation
+					Eigen::Vector2f xAxis(1.0f,0.0f);
+					Eigen::Vector2f objectAxis;
+					
+					if (major_vector_.x() > 0 && major_vector_.z() < 0) {
+						objectAxis.x() = -major_vector_.x();
+						objectAxis.y() = -major_vector_.z();
+					}
+					else if (major_vector_.x() < 0 && major_vector_.z() < 0) {
+						objectAxis.x() = -major_vector_.x();
+						objectAxis.y() = -major_vector_.z();
+					} else {
+						objectAxis.x() = major_vector_.x();
+						objectAxis.y() = major_vector_.z();
+					}
 
+					cout << major_vector_.x() << "   " << major_vector_.z() << endl;
+					cout << objectAxis.x() << "    " << objectAxis.y() << endl;
+					cout << objectAxis.dot(xAxis) << endl;
+					xAxis.normalize();
+					objectAxis.normalize();
+					cout << objectAxis.norm() << "   " << xAxis.norm() << endl;
+					cout << acos(objectAxis.dot(xAxis)) * 180.0f / 3.1415 << endl;
 					major_vector_ *= 0.2;
 					middle_vector_ *= 0.2;
 					minor_vector_ *= 0.2;
