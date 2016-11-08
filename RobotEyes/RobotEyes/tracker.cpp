@@ -407,10 +407,12 @@ public:
 		new_cloud_ = false;
 
 
-		// Draw image
+		// Draw images
 		if (!color_img_.empty()) {
 			cv::imshow("Color Image", color_img_);
 			cv::imshow("Depth Image", depth_img_);
+
+			// Canny edge detection
 			cv::Mat gray, edge, draw;
 			cv::cvtColor(color_img_, gray, CV_BGR2GRAY);
 			cv::Canny(gray, edge, 50, 150, 3);
@@ -717,44 +719,49 @@ public:
 	}
 
 	// Callback function when updating point cloud
+	// This function is called when the point cloud is accuired from camera
 	void
 		cloud_cb(const CloudConstPtr &cloud)
 	{
-		//cout << "accquire point cloud" << endl;
 		// Lock mtx_ (why?) 
 		boost::mutex::scoped_lock lock(mtx_);
 		// Get the current time for FPS
 		double start = pcl::getTime();
-		// Begin calculation of FPS
-		//FPS_CALC_BEGIN;
 		// Reset cloud_pass (why?)
 		cloud_pass_.reset(new Cloud);
 		// Reset cloud_pass_downsampled_ (why?)
 		cloud_pass_downsampled_.reset(new Cloud);
-		// Variable for plane model
+		// Variables for detected plane
 		pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients());
 		pcl::PointIndices::Ptr inliers(new pcl::PointIndices());
 
-		// Draw color image 
-		//if (cloud->isOrganized()) {
-			color_img_ = cv::Mat(cloud->height, cloud->width, CV_8UC3);
-			depth32F_img_ = cv::Mat(cloud->height, cloud->width, CV_32FC1);
-			depth_img_ = cv::Mat(cloud->height, cloud->width, CV_8UC1);
-			for (int h = 0; h < color_img_.rows; h++) {
-				for (int w = 0; w < color_img_.cols; w++) {
-					PointType point = cloud->at(w, h);
+		// Extract color data and depth data from pointcloud
+		// Create color image and depth image
+		// Initialize color_img_ with the size of point cloud
+		color_img_ = cv::Mat(cloud->height, cloud->width, CV_8UC3);
+		// Initialize depth32F_img_ with the size of point cloud
+		depth32F_img_ = cv::Mat(cloud->height, cloud->width, CV_32FC1);
+		// Initialize depth_img_ with the size of point cloud
+		depth_img_ = cv::Mat(cloud->height, cloud->width, CV_8UC1);
 
-					Eigen::Vector3i rgb = point.getRGBVector3i();
+		// Extract colored point in each loop
+		for (int h = 0; h < color_img_.rows; h++) {
+			for (int w = 0; w < color_img_.cols; w++) {
+				// Get point that contains RGB data and depth data
+				PointType point = cloud->at(w, h);
+				// Get RGB data from point
+				Eigen::Vector3i rgb = point.getRGBVector3i();
 
-					color_img_.at<cv::Vec3b>(h, w)[0] = rgb[2];
-					color_img_.at<cv::Vec3b>(h, w)[1] = rgb[1];
-					color_img_.at<cv::Vec3b>(h, w)[2] = rgb[0];
-
-					depth32F_img_.at<float>(h, w) = cloud->at(w, h).z;
-				}
+				// Store RGB data to color_img_
+				color_img_.at<cv::Vec3b>(h, w)[0] = rgb[2];
+				color_img_.at<cv::Vec3b>(h, w)[1] = rgb[1];
+				color_img_.at<cv::Vec3b>(h, w)[2] = rgb[0];
+				// Store Depth data to depth32F_img_
+				depth32F_img_.at<float>(h, w) = cloud->at(w, h).z;
 			}
-			cv::normalize(depth32F_img_, depth_img_, 0, 255, CV_MINMAX, CV_8UC1);
-		//}
+		}
+		// Normalize depth image from 32bit float to 8bit unsinged char to make it easy to process
+		cv::normalize(depth32F_img_, depth_img_, 0, 255, CV_MINMAX, CV_8UC1);
 
 		// Filter point cloud accuired from camera
 		filterPassThrough(cloud, *cloud_pass_);
@@ -764,14 +771,15 @@ public:
 
 		// Mode to calculate the centroid of object
 		if (calc_object_ || request_) {
-			cout << "ŒvŽZ‚·‚é‚æ[" << endl;
-			// Do statisticalremoval and Set filtered cloud to downsampled cloud
-			statisticalRemoval(cloud_pass_, *cloud_pass_downsampled_, 50, 1.0);
-			//	Pointer for object's point cloud 
-			CloudPtr target_cloud;
 			// Reset flags
 			calc_object_ = false;
 			request_ = false;
+			cout << "Start calculation of object...." << endl;
+
+			// Do statisticalremoval and Set filtered cloud to downsampled cloud
+			statisticalRemoval(cloud_pass_, *cloud_pass_downsampled_, 50, 1.0);
+			// Pointer for object's point cloud 
+			CloudPtr target_cloud;
 			// Segment plane from downsampled point cloud
 			// Get plane indices(inliers)
 			planeSegmentation(cloud_pass_downsampled_, *coefficients, *inliers);
@@ -843,13 +851,12 @@ public:
 						objectAxis.y() = major_vector_.z();
 					}
 
-					cout << major_vector_.x() << "   " << major_vector_.z() << endl;
-					cout << objectAxis.x() << "    " << objectAxis.y() << endl;
-					cout << objectAxis.dot(xAxis) << endl;
 					xAxis.normalize();
 					objectAxis.normalize();
-					cout << objectAxis.norm() << "   " << xAxis.norm() << endl;
+					// Show the orientation angle of object
 					cout << acos(objectAxis.dot(xAxis)) * 180.0f / 3.1415 << endl;
+
+					// Scaling the object vector to fit OBB
 					major_vector_ *= 0.2;
 					middle_vector_ *= 0.2;
 					minor_vector_ *= 0.2;
@@ -1006,9 +1013,6 @@ public:
 		//}
 
 		new_cloud_ = true;
-		double end = pcl::getTime();
-		computation_time_ = end - start;
-		//FPS_CALC_END("computation");
 		counter_++;
 	}
 
@@ -1035,12 +1039,11 @@ public:
 	{
 		//  Make OpenNI2Grabber object
 		pcl::Grabber* interface = new pcl::io::OpenNI2Grabber(device_id_);
-		// 
-		boost::function<void(const CloudConstPtr&)> f =
-			boost::bind(&OpenNISegmentTracking::cloud_cb, this, _1);
+		//	Callable entity for cloud_cb 
+		boost::function<void(const CloudConstPtr&)> f = boost::bind(&OpenNISegmentTracking::cloud_cb, this, _1);
 		// Register cloud callback function with grabber interface
 		interface->registerCallback(f);
-		// Run a callable object on th UI thread
+		// Run a viz_cb function on th UI thread
 		viewer_.runOnVisualizationThread(boost::bind(&OpenNISegmentTracking::viz_cb, this, _1), "viz_cb");
 		viewer_.registerKeyboardCallback(&OpenNISegmentTracking::keyboard_callback, *this);
 
@@ -1048,7 +1051,7 @@ public:
 		// Start the streams
 		interface->start();
 
-		// 
+		//	 
 		while (!viewer_.wasStopped()) {
 			// 
 			boost::this_thread::sleep(boost::posix_time::seconds(1));
