@@ -21,9 +21,6 @@
     <ClCompile Include="camera.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="opticalFlow.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="frame_process.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

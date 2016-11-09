@@ -56,9 +56,59 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/opencv.hpp>
 
 #include <WinSock2.h>
 #include <iostream>
+
+
+// Variables for tracking
+cv::Mat image;
+bool selectObject = false;
+int trackObject = 0;
+bool showHist = true;
+cv::Point origin;
+cv::Rect selection;
+int LINE_AA = 16;
+cv::Mat frame, hsv, hue, mask, hist, histimg, backproj;
+// ?? 
+cv::Rect trackWindow;
+// The size of histogram (bins) 
+int hsize = 16;
+// The range of histogram
+float hranges[] = { 0,180 };
+// Pointer to the range of histogram 
+const float* phranges = hranges;
+
+
+
+// Mouse callback function
+void onMouse(int event, int x, int y, int, void*) {
+	if (selectObject) {
+		selection.x = MIN(x, origin.x);
+		selection.y = MIN(y, origin.y);
+		selection.width = std::abs(x - origin.x);
+		selection.height = std::abs(y - origin.y);
+		selection &= cv::Rect(0, 0, image.cols, image.rows);
+	}
+
+	// Click process
+	switch (event) {
+		// When left button downed
+	case cv::EVENT_LBUTTONDOWN:
+		// Set cursor position as origin
+		origin = cv::Point(x, y);
+		// 
+		selection = cv::Rect(x, y, 0, 0);
+		selectObject = true;
+		break;
+	case cv::EVENT_LBUTTONUP:
+		selectObject = false;
+		if (selection.width > 0 && selection.height > 0)
+			trackObject = -1;
+		break;
+	}
+}
 
 #define FPS_CALC_BEGIN                          \
     static double duration = 0;                 \
@@ -368,48 +418,12 @@ public:
 			viz.addLine(center, z_axis, 0.0f, 0.0f, 1.0f, "minor eigen vector");
 		}
 
-		// When tracking is available 
-		if (new_cloud_ && reference_)
-		{
-			bool ret = drawParticles(viz);
-			if (ret)
-			{
-				drawResult(viz);
-
-				// draw some texts
-				viz.removeShape("N");
-				viz.addText((boost::format("number of Reference PointClouds: %d") % tracker_->getReferenceCloud()->points.size()).str(),
-					10, 20, 20, 1.0, 1.0, 1.0, "N");
-
-				viz.removeShape("M");
-				viz.addText((boost::format("number of Measured PointClouds:  %d") % cloud_pass_downsampled_->points.size()).str(),
-					10, 40, 20, 1.0, 1.0, 1.0, "M");
-
-				viz.removeShape("tracking");
-				viz.addText((boost::format("tracking:        %f fps") % (1.0 / tracking_time_)).str(),
-					10, 60, 20, 1.0, 1.0, 1.0, "tracking");
-
-				viz.removeShape("downsampling");
-				viz.addText((boost::format("downsampling:    %f fps") % (1.0 / downsampling_time_)).str(),
-					10, 80, 20, 1.0, 1.0, 1.0, "downsampling");
-
-				viz.removeShape("computation");
-				viz.addText((boost::format("computation:     %f fps") % (1.0 / computation_time_)).str(),
-					10, 100, 20, 1.0, 1.0, 1.0, "computation");
-
-				viz.removeShape("particles");
-				viz.addText((boost::format("particles:     %d") % tracker_->getParticles()->points.size()).str(),
-					10, 120, 20, 1.0, 1.0, 1.0, "particles");
-
-			}
-		}
 		// Cloud is not new
 		new_cloud_ = false;
 
-
 		// Draw images
 		if (!color_img_.empty()) {
-			cv::imshow("Color Image", color_img_);
+			//cv::imshow("Color Image", color_img_);
 			cv::imshow("Depth Image", depth_img_);
 
 			// Canny edge detection
@@ -418,6 +432,81 @@ public:
 			cv::Canny(gray, edge, 50, 150, 3);
 			edge.convertTo(draw, CV_8UC1);
 			cv::imshow("Canny edge", draw);
+
+
+			// Create window
+			cv::namedWindow("Camera", 0);
+			// Set mouse callback function
+			cv::setMouseCallback("Camera", onMouse, 0);
+			// Test Camshift tracking
+			// Variables for tracking
+			histimg = cv::Mat::zeros(200, 320, CV_8UC3);
+			// Copy frame to image
+			//image = cv::Mat(color_img_.rows, color_img_.cols, CV_8UC3);
+			color_img_.copyTo(image);
+			// Transform captured image from BGR space to HSV space
+			cv::cvtColor(image, hsv, CV_BGR2HSV);
+			// Check trackObject exists 
+			if (trackObject) {
+				// Ignore dark region in image
+				// mask is set 255 if hsv is between lowerbound and upperbound and 0 otherwise
+				cv::inRange(hsv, cv::Scalar(0, 60, 32), cv::Scalar(180, 255, 255), mask);
+
+				// Array for mixChannels() to specify which channels are copied 
+				int ch[] = { 0, 0 };
+				// Create hue image
+				hue.create(hsv.size(), hsv.depth());
+				// Extract hue values from hsv image 
+				cv::mixChannels(&hsv, 1, &hue, 1, ch, 1);
+
+				// Create histgram of the object to track
+				// Execute only once
+				if (trackObject < 0) {
+					// Extract hue values from hue in selsection size
+					// roi is hue values of the object to track
+					cv::Mat roi(hue, selection);
+					//	Extract 1 or 0 values from mask in selection 
+					cv::Mat maskroi(mask, selection);
+
+					// Calculate the histogram of roi 
+					// Source image: roi
+					// The number of source image: 1
+					// the dimention of hannels used to compute: 0
+					// Mask image: maskroi
+					// The number of bins: hist
+					// Histogram dimentionality: 1
+					// Array of histogram size: hsize
+					// The range of histogram: phranges
+					cv::calcHist(&roi, 1, 0, maskroi, hist, 1, &hsize, &phranges);
+
+					// Normalize histogram
+					cv::normalize(hist, hist, 0, 255, cv::NORM_MINMAX);
+					// Set specified rectangle to trackWindow
+					trackWindow = selection;
+					// Increament trackObject to execute this code block once
+					trackObject = 1;
+				}
+
+				// Calculate backprojection image backproj using hist
+				cv::calcBackProject(&hue, 1, 0, hist, backproj, &phranges);
+				// Set 0 to pixels of dark region 
+				backproj &= mask;
+
+				// Calculate rotated rectangle using camshift
+				cv::RotatedRect trackBox = cv::CamShift(backproj, trackWindow, cv::TermCriteria(cv::TermCriteria::EPS | cv::TermCriteria::COUNT, 10, 1));
+
+				cv::ellipse(image, trackBox, cv::Scalar(0, 0, 255), 3, LINE_AA);
+
+			}
+
+			//選択オブジェクトがある時に色を変える。
+			if (selectObject && selection.width > 0 && selection.height > 0) {
+				cv::Mat roi(image, selection);
+				cv::bitwise_not(roi, roi);
+			}
+
+			cv::imshow("Camera", image);
+
 
 			cv::waitKey(30);
 		}
@@ -822,7 +911,8 @@ public:
 					CloudPtr temp_cloud(new Cloud);
 					// Extract 0th object cluster from point cloud
 					extractSegmentCluster(target_cloud, cluster_indices, 0, *temp_cloud);
-
+					cout << temp_cloud->height << endl;
+					cout << temp_cloud->width << endl;
 					// Calculate object AABB
 					drawOBB_ = true;
 					pcl::MomentOfInertiaEstimation <PointType> feature_extractor;
@@ -834,11 +924,11 @@ public:
 					feature_extractor.getEigenValues(major_value_, middle_value_, minor_value_);
 					feature_extractor.getEigenVectors(major_vector_, middle_vector_, minor_vector_);
 					feature_extractor.getMassCenter(mass_center_);
-					
+
 					// Calculate roation
-					Eigen::Vector2f xAxis(1.0f,0.0f);
+					Eigen::Vector2f xAxis(1.0f, 0.0f);
 					Eigen::Vector2f objectAxis;
-					
+
 					if (major_vector_.x() > 0 && major_vector_.z() < 0) {
 						objectAxis.x() = -major_vector_.x();
 						objectAxis.y() = -major_vector_.z();
@@ -846,7 +936,8 @@ public:
 					else if (major_vector_.x() < 0 && major_vector_.z() < 0) {
 						objectAxis.x() = -major_vector_.x();
 						objectAxis.y() = -major_vector_.z();
-					} else {
+					}
+					else {
 						objectAxis.x() = major_vector_.x();
 						objectAxis.y() = major_vector_.z();
 					}
@@ -1174,6 +1265,7 @@ main(int argc, char** argv)
 		usage(argv);
 		exit(1);
 	}
+
 
 	// Create openi object
 	OpenNISegmentTracking<pcl::PointXYZRGBA> v(device_id, 8, downsampling_grid_size,

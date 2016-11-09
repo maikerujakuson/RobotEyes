@@ -155,7 +155,6 @@
     <ClCompile Include="camera.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="frame_process.cpp" />
-    <ClCompile Include="opticalFlow.cpp" />
     <ClCompile Include="tracker.cpp" />
   </ItemGroup>
   <ItemGroup>
