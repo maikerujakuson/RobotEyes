@@ -504,7 +504,7 @@ public:
 				cv::Mat roi(image, selection);
 				cv::bitwise_not(roi, roi);
 			}
-
+			cv::circle(image, cv::Point(320, 240), 1, cv::Scalar(255, 255, 0), 1);
 			cv::imshow("Camera", image);
 
 
