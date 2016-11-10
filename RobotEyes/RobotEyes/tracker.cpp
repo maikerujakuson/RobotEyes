@@ -801,6 +801,13 @@ public:
 			//	Recieve data from sock
 			memset(buf_, 0, sizeof(buf_));
 			recv(sock_recv_, buf_, sizeof(buf_), 0);
+			// Check if request is traking mode or not
+			if (strcmp(buf_, "ON")) {
+				cout << "Tracking start" << endl;
+			}
+			else if (strcmp(buf_, "OFF")) {
+				cout << "Tracking end" << endl;
+			}
 			// Print data
 			//printf("%s\n", buf_);
 			cout << "Now request from robot has come." << endl;
@@ -968,143 +975,6 @@ public:
 				}
 			}
 		}
-		// 
-		//if (counter_ < 10)
-		//{
-		//	// Filter point cloud by voxelgrid
-		//	gridSample(cloud_pass_, *cloud_pass_downsampled_, downsampling_grid_size_);
-		//}
-		//// 
-		//else if (counter_ == 10)
-		//{
-		//	// Why is this line commented out?
-		//	//gridSample (cloud_pass_, *cloud_pass_downsampled_, 0.01);
-
-		//	// Set filtered cloud to downsampled cloud
-		//	cloud_pass_downsampled_ = cloud_pass_;
-		//	//	Pointer for objects point cloud 
-		//	CloudPtr target_cloud;
-		//	// Use convex hull
-		//	if (use_convex_hull_)
-		//	{
-		//		// Segment plane from downsampled point cloud
-		//		// Get plane indices(inliers)
-		//		planeSegmentation(cloud_pass_downsampled_, *coefficients, *inliers);
-		//		// Cheack whether plane is detected or not
-		//		if (inliers->indices.size() > 3)
-		//		{
-		//			//	Variable for projected cloud 
-		//			CloudPtr cloud_projected(new Cloud);
-		//			// 
-		//			cloud_hull_.reset(new Cloud);
-		//			nonplane_cloud_.reset(new Cloud);
-
-		//			// Project downsampled cloud onto plane
-		//			planeProjection(cloud_pass_downsampled_, *cloud_projected, coefficients);
-		//			// Get convex hull of projected cloud
-		//			convexHull(cloud_projected, *cloud_hull_, hull_vertices_);
-		//			// Extract objects supported by a plane
-		//			extractNonPlanePoints(cloud_pass_downsampled_, cloud_hull_, *nonplane_cloud_);
-		//			// Objects point cloud
-		//			target_cloud = nonplane_cloud_;
-		//		}
-		//		else
-		//		{
-		//			PCL_WARN("cannot segment plane\n");
-		//		}
-		//	}
-		//	else
-		//	{
-		//		// Use downsampled cloud( not segmentated) 
-		//		PCL_WARN("without plane segmentation\n");
-		//		target_cloud = cloud_pass_downsampled_;
-		//	}
-
-		//	// Cheack if target_cloud is not empty
-		//	if (target_cloud != NULL)
-		//	{
-		//		cout << "start clustering" << endl;
-		//		// Segmentate each object by euclidan cluster
-		//		PCL_INFO("segmentation, please wait...\n");
-		//		// Get indices of each segmentated object
-		//		std::vector<pcl::PointIndices> cluster_indices;
-		//		euclideanSegment(target_cloud, cluster_indices);
-		//		// Cheack if any objects exist
-		//		if (cluster_indices.size() > 0)
-		//		{
-		//			// select the cluster to track
-		//			CloudPtr temp_cloud(new Cloud);
-		//			// Extract 0th object cluster from point cloud
-		//			extractSegmentCluster(target_cloud, cluster_indices, 0, *temp_cloud);
-		//			// Vector for centroid of object
-		//			Eigen::Vector4f c;
-		//			// Compute the centroid of extracted object cloud
-		//			pcl::compute3DCentroid<RefPointType>(*temp_cloud, c);
-		//			cout << "X: " << c[0] << endl;
-		//			cout << "Y: " << c[1] << endl;
-		//			cout << "Z: " << c[2] << endl;
-		//			// What is this line doing?
-		//			int segment_index = 0;
-		//			// Compute segment distance (x^2 + y^2)
-		//			double segment_distance = c[0] * c[0] + c[1] * c[1];
-
-		//			for (size_t i = 1; i < cluster_indices.size(); i++)
-		//			{
-		//				temp_cloud.reset(new Cloud);
-		//				extractSegmentCluster(target_cloud, cluster_indices, int(i), *temp_cloud);
-		//				pcl::compute3DCentroid<RefPointType>(*temp_cloud, c);
-		//				double distance = c[0] * c[0] + c[1] * c[1];
-		//				if (distance < segment_distance)
-		//				{
-		//					segment_index = int(i);
-		//					segment_distance = distance;
-		//				}
-		//			}
-
-		//			segmented_cloud_.reset(new Cloud);
-		//			extractSegmentCluster(target_cloud, cluster_indices, segment_index, *segmented_cloud_);
-		//			//pcl::PointCloud<pcl::Normal>::Ptr normals (new pcl::PointCloud<pcl::Normal>);
-		//			//normalEstimation (segmented_cloud_, *normals);
-		//			RefCloudPtr ref_cloud(new RefCloud);
-		//			//addNormalToCloud (segmented_cloud_, normals, *ref_cloud);
-		//			ref_cloud = segmented_cloud_;
-		//			RefCloudPtr nonzero_ref(new RefCloud);
-		//			removeZeroPoints(ref_cloud, *nonzero_ref);
-
-		//			PCL_INFO("calculating cog\n");
-
-		//			RefCloudPtr transed_ref(new RefCloud);
-		//			pcl::compute3DCentroid<RefPointType>(*nonzero_ref, c);
-		//			Eigen::Affine3f trans = Eigen::Affine3f::Identity();
-		//			trans.translation().matrix() = Eigen::Vector3f(c[0], c[1], c[2]);
-		//			//pcl::transformPointCloudWithNormals<RefPointType> (*ref_cloud, *transed_ref, trans.inverse());
-		//			pcl::transformPointCloud<RefPointType>(*nonzero_ref, *transed_ref, trans.inverse());
-		//			CloudPtr transed_ref_downsampled(new Cloud);
-		//			gridSample(transed_ref, *transed_ref_downsampled, downsampling_grid_size_);
-		//			tracker_->setReferenceCloud(transed_ref_downsampled);
-		//			tracker_->setTrans(trans);
-		//			reference_ = transed_ref;
-		//			tracker_->setMinIndices(int(ref_cloud->points.size()) / 2);
-		//		}
-		//		else
-		//		{
-		//			PCL_WARN("euclidean segmentation failed\n");
-		//		}
-		//	}
-		//}
-		//else
-		//{
-		//	//normals_.reset (new pcl::PointCloud<pcl::Normal>);
-		//	//normalEstimation (cloud_pass_downsampled_, *normals_);
-		//	//RefCloudPtr tracking_cloud (new RefCloud ());
-		//	//addNormalToCloud (cloud_pass_downsampled_, normals_, *tracking_cloud);
-		//	//tracking_cloud = cloud_pass_downsampled_;
-
-		//	//*cloud_pass_downsampled_ = *cloud_pass_;
-		//	//cloud_pass_downsampled_ = cloud_pass_;
-		//	gridSampleApprox(cloud_pass_, *cloud_pass_downsampled_, downsampling_grid_size_);
-		//	tracking(cloud_pass_downsampled_);
-		//}
 
 		new_cloud_ = true;
 		counter_++;
