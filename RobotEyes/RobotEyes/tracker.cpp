@@ -499,7 +499,7 @@ public:
 				cv::ellipse(image, trackBox, cv::Scalar(0, 0, 255), 3, LINE_AA);
 				cv::circle(image, cv::Point(trackBox.center.x, trackBox.center.y), 2, cv::Scalar(0, 0, 255), 3);
 				//cout << "Distance between the center of object and image: " << cv::norm(cv::Point(trackBox.center.x, trackBox.center.y) - cv::Point(320, 240)) << endl;
-				cout << "Move vector: (" << trackBox.center.x - 320 << "," << trackBox.center.y - 240 << ")" << endl;
+				//cout << "Move vector: (" << trackBox.center.x - 320 << "," << trackBox.center.y - 240 << ")" << endl;
 				if (trackingMode) {
 					// Sending data
 					memset(buf_, 0, sizeof(buf_));
