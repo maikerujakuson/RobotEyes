@@ -802,10 +802,10 @@ public:
 			memset(buf_, 0, sizeof(buf_));
 			recv(sock_recv_, buf_, sizeof(buf_), 0);
 			// Check if request is traking mode or not
-			if (strcmp(buf_, "ON")) {
+			if (strcmp(buf_, "ON") == 0) {
 				cout << "Tracking start" << endl;
 			}
-			else if (strcmp(buf_, "OFF")) {
+			else if (strcmp(buf_, "OFF") == 0) {
 				cout << "Tracking end" << endl;
 			}
 			// Print data
