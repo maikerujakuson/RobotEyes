@@ -496,7 +496,7 @@ public:
 				cv::RotatedRect trackBox = cv::CamShift(backproj, trackWindow, cv::TermCriteria(cv::TermCriteria::EPS | cv::TermCriteria::COUNT, 10, 1));
 
 				cv::ellipse(image, trackBox, cv::Scalar(0, 0, 255), 3, LINE_AA);
-
+				cv::circle(image, cv::Point(trackBox.center.x, trackBox.center.y), 2, cv::Scalar(0, 0, 255), 3);
 			}
 
 			//選択オブジェクトがある時に色を変える。
@@ -504,7 +504,8 @@ public:
 				cv::Mat roi(image, selection);
 				cv::bitwise_not(roi, roi);
 			}
-			cv::circle(image, cv::Point(320, 240), 1, cv::Scalar(255, 255, 0), 1);
+			cv::circle(image, cv::Point(320, 240), 2, cv::Scalar(255, 255, 0), 1);
+			
 			cv::imshow("Camera", image);
 
 
