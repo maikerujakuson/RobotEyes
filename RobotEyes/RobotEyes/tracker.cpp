@@ -80,7 +80,8 @@ float hranges[] = { 0,180 };
 // Pointer to the range of histogram 
 const float* phranges = hranges;
 
-
+// Flag for tracking object
+bool trackingMode = false;
 
 // Mouse callback function
 void onMouse(int event, int x, int y, int, void*) {
@@ -499,6 +500,13 @@ public:
 				cv::circle(image, cv::Point(trackBox.center.x, trackBox.center.y), 2, cv::Scalar(0, 0, 255), 3);
 				//cout << "Distance between the center of object and image: " << cv::norm(cv::Point(trackBox.center.x, trackBox.center.y) - cv::Point(320, 240)) << endl;
 				cout << "Move vector: (" << trackBox.center.x - 320 << "," << trackBox.center.y - 240 << ")" << endl;
+				if (trackingMode) {
+					// Sending data
+					memset(buf_, 0, sizeof(buf_));
+					sprintf(buf_, "%f %f %f %f %f %f %f %f", mass_center_.x(), mass_center_.y(), mass_center_.z(), 0.0f, trackBox.center.x - 320, trackBox.center.y - 240, 0.0f, 0.0f);
+					sendto(sock_send_,
+						buf_, strlen(buf_), 0, (struct sockaddr *)&addr_send_, sizeof(addr_send_));
+				}
 			}
 
 			//選択オブジェクトがある時に色を変える。
@@ -801,13 +809,17 @@ public:
 			//	Recieve data from sock
 			memset(buf_, 0, sizeof(buf_));
 			recv(sock_recv_, buf_, sizeof(buf_), 0);
+
 			// Check if request is traking mode or not
 			if (strcmp(buf_, "ON") == 0) {
 				cout << "Tracking start" << endl;
+				trackingMode = true;
 			}
 			else if (strcmp(buf_, "OFF") == 0) {
 				cout << "Tracking end" << endl;
+				trackingMode = false;
 			}
+
 			// Print data
 			//printf("%s\n", buf_);
 			cout << "Now request from robot has come." << endl;
