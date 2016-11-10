@@ -426,12 +426,12 @@ public:
 			//cv::imshow("Color Image", color_img_);
 			cv::imshow("Depth Image", depth_img_);
 
-			// Canny edge detection
-			cv::Mat gray, edge, draw;
-			cv::cvtColor(color_img_, gray, CV_BGR2GRAY);
-			cv::Canny(gray, edge, 50, 150, 3);
-			edge.convertTo(draw, CV_8UC1);
-			cv::imshow("Canny edge", draw);
+			//// Canny edge detection
+			//cv::Mat gray, edge, draw;
+			//cv::cvtColor(color_img_, gray, CV_BGR2GRAY);
+			//cv::Canny(gray, edge, 50, 150, 3);
+			//edge.convertTo(draw, CV_8UC1);
+			//cv::imshow("Canny edge", draw);
 
 
 			// Create window
@@ -497,6 +497,7 @@ public:
 
 				cv::ellipse(image, trackBox, cv::Scalar(0, 0, 255), 3, LINE_AA);
 				cv::circle(image, cv::Point(trackBox.center.x, trackBox.center.y), 2, cv::Scalar(0, 0, 255), 3);
+				cout << "Distance between the center of object and image: " << cv::norm(cv::Point(trackBox.center.x, trackBox.center.y) - cv::Point(320, 240)) << endl;
 			}
 
 			//選択オブジェクトがある時に色を変える。
