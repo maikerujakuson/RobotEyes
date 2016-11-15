@@ -4,10 +4,11 @@ int S[1000];
 
 int main(void)
 {
-	std::string s;
-	while (1) {
-		std::cin >> s;
-		if (std::cin.eof())
-			break;
-	}
+	int a = 10;
+	int interval = 1;
+
+	while (interval < a / 3)
+		interval = interval * 3 + 1;
+
+	std::cout << interval << std::endl;
 }

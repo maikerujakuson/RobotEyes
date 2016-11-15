@@ -517,7 +517,7 @@ public:
 			cv::circle(image, cv::Point(320, 240), 2, cv::Scalar(255, 255, 0), 1);
 			
 			cv::imshow("Camera", image);
-
+			
 
 			cv::waitKey(30);
 		}
@@ -551,6 +551,7 @@ public:
 	{
 		pcl::StatisticalOutlierRemoval<PointType> sor;
 		sor.setInputCloud(cloud);
+		sor.setKeepOrganized(false);
 		// Set the number of neighbors to analyze for each point 
 		sor.setMeanK(numOfNeighbors);
 		// Remove sd standard deviation far from mean 
@@ -664,6 +665,7 @@ public:
 		proj.setModelType(pcl::SACMODEL_PLANE);
 		// Set input cloud
 		proj.setInputCloud(cloud);
+		
 		// Set plane coefficients
 		proj.setModelCoefficients(coefficients);
 		// Get filtered cloud
@@ -797,13 +799,48 @@ public:
 	}
 
 	// Cheack if request has come from robot
+	void listen()
+	{
+		// Initialize fds_
+		memcpy(&fds_, &readfds_, sizeof(fd_set));
+
+		// Wait untile fds gets readable in timeout time
+		select(0, &fds_, NULL, NULL, &tv_);
+
+		// Cheack readable data is in sock_recv_ 
+		if (FD_ISSET(sock_recv_, &fds_)) {
+			//	Extract message from sock to buf_
+			memset(buf_, 0, sizeof(buf_));
+			recv(sock_recv_, buf_, sizeof(buf_), 0);
+
+			// Parse the message
+			if (strcmp(buf_, "Scanning")) {
+				// Scan objects on a plane
+				cout << "Scanning start..." << endl;
+				scanning_ = true;
+			}else if (strcmp(buf_, "TrackingON") == 0) {
+				cout << "Tracking start..." << endl;
+				trackingMode = true;
+			}
+			else if (strcmp(buf_, "TrackingOFF") == 0) {
+				cout << "Tracking end..." << endl;
+				trackingMode = false;
+			}
+			// Print data
+			//printf("%s\n", buf_);
+		}
+	}
+
+	// Cheack if request has come from robot
 	bool isRequestCome()
 	{
-		// Clear fds
+		// Initialize fds_
 		memcpy(&fds_, &readfds_, sizeof(fd_set));
-		// Wait untile fds becomes readable in timeout time
+
+		// Wait untile fds gets readable in timeout time
 		select(0, &fds_, NULL, NULL, &tv_);
-		// Cheack readable data is in sock 
+
+		// Cheack readable data is in sock_recv_ 
 		if (FD_ISSET(sock_recv_, &fds_)) {
 			request_ = true;
 			//	Recieve data from sock
@@ -829,6 +866,28 @@ public:
 		return false;
 	}
 
+	// Extract color data and depth data from pointcloud
+	void extractColorImage(const CloudConstPtr &cloud)
+	{
+		// Initialize color_img_ with the size of point cloud
+		color_img_ = cv::Mat(cloud->height, cloud->width, CV_8UC3);
+		// Extract colored point in each loop
+		for (int h = 0; h < color_img_.rows; h++) {
+			for (int w = 0; w < color_img_.cols; w++) {
+				// Get point that contains RGB data and depth data
+				PointType point = cloud->at(w, h);
+				// Get RGB data from point
+				Eigen::Vector3i rgb = point.getRGBVector3i();
+
+				// Store RGB data to color_img_
+				color_img_.at<cv::Vec3b>(h, w)[0] = rgb[2];
+				color_img_.at<cv::Vec3b>(h, w)[1] = rgb[1];
+				color_img_.at<cv::Vec3b>(h, w)[2] = rgb[0];
+			}
+		}
+	}
+
+
 	// Callback function when updating point cloud
 	// This function is called when the point cloud is accuired from camera
 	void
@@ -836,8 +895,6 @@ public:
 	{
 		// Lock mtx_ (why?) 
 		boost::mutex::scoped_lock lock(mtx_);
-		// Get the current time for FPS
-		double start = pcl::getTime();
 		// Reset cloud_pass (why?)
 		cloud_pass_.reset(new Cloud);
 		// Reset cloud_pass_downsampled_ (why?)
@@ -876,30 +933,31 @@ public:
 
 		// Filter point cloud accuired from camera
 		filterPassThrough(cloud, *cloud_pass_);
-
 		// Cheack if request has come from robot
 		isRequestCome();
 
 		// Mode to calculate the centroid of object
-		if (calc_object_ || request_) {
+		if (calc_object_ || scanning_) {
 			// Reset flags
 			calc_object_ = false;
-			request_ = false;
-			cout << "Start calculation of object...." << endl;
+			scanning_ = false;
 
 			// Do statisticalremoval and Set filtered cloud to downsampled cloud
 			statisticalRemoval(cloud_pass_, *cloud_pass_downsampled_, 50, 1.0);
+			
 			// Pointer for object's point cloud 
 			CloudPtr target_cloud;
-			// Segment plane from downsampled point cloud
-			// Get plane indices(inliers)
+			// Segmentate plane from downsampled point cloud
+			// Set plane indices to inliers
 			planeSegmentation(cloud_pass_downsampled_, *coefficients, *inliers);
 			// Cheack whether plane is detected or not
+			// I don'nt know why 3.
 			if (inliers->indices.size() > 3)
 			{
-				//	Variable for projected cloud 
+				cout << "A plane was detected..." << endl;
+				// Variable for projected cloud 
 				CloudPtr cloud_projected(new Cloud);
-				// 
+				// ???? 
 				cloud_hull_.reset(new Cloud);
 				nonplane_cloud_.reset(new Cloud);
 
@@ -914,28 +972,28 @@ public:
 			}
 			else
 			{
-				PCL_WARN("cannot segment plane\n");
+				PCL_WARN("Cannot segment plane...\n");
 			}
 
 			// Cheack if target_cloud is not empty
 			if (target_cloud != NULL)
 			{
-				cout << "start clustering" << endl;
+				cout << "Start clustering point cloud on the plane..." << endl;
 				// Segmentate each object by euclidan cluster
-				PCL_INFO("segmentation, please wait...\n");
+				PCL_INFO("Clustering, please wait...\n");
 				// Get indices of each segmentated object
 				std::vector<pcl::PointIndices> cluster_indices;
 				euclideanSegment(target_cloud, cluster_indices);
 				// Cheack if any objects exist
 				if (cluster_indices.size() > 0)
 				{
-					// select the cluster to track
+					cout << "The number of clusters: " << cluster_indices.size() << endl;
+					// Select the cluster to track
 					CloudPtr temp_cloud(new Cloud);
-					// Extract 0th object cluster from point cloud
+					// Extract 0th object cluster (the biggest cluster) from point cloud
 					extractSegmentCluster(target_cloud, cluster_indices, 0, *temp_cloud);
-					cout << temp_cloud->height << endl;
-					cout << temp_cloud->width << endl;
-					// Calculate object AABB
+					cout << "The number of points in a cluster: " << temp_cloud->width << endl;
+					// Calculate OBB of the object
 					drawOBB_ = true;
 					pcl::MomentOfInertiaEstimation <PointType> feature_extractor;
 					feature_extractor.setInputCloud(temp_cloud);
@@ -943,14 +1001,16 @@ public:
 					feature_extractor.getMomentOfInertia(moment_of_inertia_);
 					feature_extractor.getEccentricity(eccentricity_);
 					feature_extractor.getOBB(min_point_OBB_, max_point_OBB_, position_OBB_, rotational_matrix_OBB_);
+					// Calculate eigen vectors of the object point cloud
 					feature_extractor.getEigenValues(major_value_, middle_value_, minor_value_);
+					// Calculate eigen values of the object point cloud
 					feature_extractor.getEigenVectors(major_vector_, middle_vector_, minor_vector_);
+					// Calculate centroid
 					feature_extractor.getMassCenter(mass_center_);
 
-					// Calculate roation
+					// Calculate direction of the object 
 					Eigen::Vector2f xAxis(1.0f, 0.0f);
 					Eigen::Vector2f objectAxis;
-
 					if (major_vector_.x() > 0 && major_vector_.z() < 0) {
 						objectAxis.x() = -major_vector_.x();
 						objectAxis.y() = -major_vector_.z();
@@ -963,11 +1023,10 @@ public:
 						objectAxis.x() = major_vector_.x();
 						objectAxis.y() = major_vector_.z();
 					}
-
 					xAxis.normalize();
 					objectAxis.normalize();
 					// Show the orientation angle of object
-					cout << acos(objectAxis.dot(xAxis)) * 180.0f / 3.1415 << endl;
+					cout << "Angle of the object: " << acos(objectAxis.dot(xAxis)) * 180.0f / 3.1415 << " degree" << endl;
 
 					// Scaling the object vector to fit OBB
 					major_vector_ *= 0.2;
@@ -987,7 +1046,7 @@ public:
 				}
 			}
 		}
-
+		
 		new_cloud_ = true;
 		counter_++;
 	}
@@ -996,15 +1055,6 @@ public:
 	void
 		keyboard_callback(const pcl::visualization::KeyboardEvent& event, void*)
 	{
-		if (event.getKeyCode())
-			cout << "the key \'" << event.getKeyCode() << "\' (" << event.getKeyCode() << ") was";
-		else
-			cout << "the special key \'" << event.getKeySym() << "\' was";
-		if (event.keyDown())
-			cout << " pressed" << endl;
-		else
-			cout << " released" << endl;
-
 		if (event.getKeySym() == "t" && event.keyDown())
 			calc_object_ = true;
 	}
@@ -1022,11 +1072,8 @@ public:
 		// Run a viz_cb function on th UI thread
 		viewer_.runOnVisualizationThread(boost::bind(&OpenNISegmentTracking::viz_cb, this, _1), "viz_cb");
 		viewer_.registerKeyboardCallback(&OpenNISegmentTracking::keyboard_callback, *this);
-
-
 		// Start the streams
 		interface->start();
-
 		//	 
 		while (!viewer_.wasStopped()) {
 			// 
@@ -1063,6 +1110,7 @@ public:
 	double downsampling_grid_size_;
 	bool calc_object_ = false;
 	bool request_ = false;
+	bool scanning_ = false;
 
 	// Variable for object OBB
 	bool drawOBB_ = false;
