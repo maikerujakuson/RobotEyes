@@ -809,12 +809,12 @@ public:
 
 		// Cheack readable data is in sock_recv_ 
 		if (FD_ISSET(sock_recv_, &fds_)) {
-			//	Extract message from sock to buf_
+			//	Take message from sock to buf_
 			memset(buf_, 0, sizeof(buf_));
 			recv(sock_recv_, buf_, sizeof(buf_), 0);
 
 			// Parse the message
-			if (strcmp(buf_, "Scanning")) {
+			if (strcmp(buf_, "Scanning")==0) {
 				// Scan objects on a plane
 				cout << "Scanning start..." << endl;
 				scanning_ = true;
@@ -827,7 +827,7 @@ public:
 				trackingMode = false;
 			}
 			// Print data
-			//printf("%s\n", buf_);
+			printf("%s\n", buf_);
 		}
 	}
 
@@ -933,8 +933,10 @@ public:
 
 		// Filter point cloud accuired from camera
 		filterPassThrough(cloud, *cloud_pass_);
+
 		// Cheack if request has come from robot
-		isRequestCome();
+		//isRequestCome();
+		listen();
 
 		// Mode to calculate the centroid of object
 		if (calc_object_ || scanning_) {
@@ -1027,6 +1029,7 @@ public:
 					objectAxis.normalize();
 					// Show the orientation angle of object
 					cout << "Angle of the object: " << acos(objectAxis.dot(xAxis)) * 180.0f / 3.1415 << " degree" << endl;
+					float angle =  acos(objectAxis.dot(xAxis)) * 180.0f / 3.1415;
 
 					// Scaling the object vector to fit OBB
 					major_vector_ *= 0.2;
@@ -1035,7 +1038,7 @@ public:
 
 					// Sending data
 					memset(buf_, 0, sizeof(buf_));
-					sprintf(buf_, "%f %f %f", mass_center_.x(), mass_center_.y(), mass_center_.z());
+					sprintf(buf_, "%f %f %f %f %f %f %f %f", mass_center_.x(), mass_center_.y(), mass_center_.z(),angle,0,0,0,0);
 					sendto(sock_send_,
 						buf_, strlen(buf_), 0, (struct sockaddr *)&addr_send_, sizeof(addr_send_));
 
