@@ -1028,7 +1028,7 @@ public:
 					objectAxis.normalize();
 					// Show the orientation angle of object
 					cout << "Angle of the object: " << acos(objectAxis.dot(xAxis)) * 180.0f / 3.1415 << " degree" << endl;
-					float angle = acos(objectAxis.dot(xAxis)) * 180.0f / 3.1415;
+					float angle = acos(objectAxis.dot(xAxis));
 					// Scaling the object vector to fit OBB
 					major_vector_ *= 0.2;
 					middle_vector_ *= 0.2;
