@@ -403,6 +403,7 @@ public:
 			viz.addLine(pt1, pt2, 1.0, 1.0, 0.0, "1 edge");
 			viz.addLine(pt1, pt4, 1.0, 1.0, 0.0, "2 edge");
 			viz.addLine(pt1, pt5, 1.0, 1.0, 0.0, "3 edge");
+			
 			viz.addLine(pt5, pt6, 1.0, 1.0, 0.0, "4 edge");
 			viz.addLine(pt5, pt8, 1.0, 1.0, 0.0, "5 edge");
 			viz.addLine(pt2, pt6, 1.0, 1.0, 0.0, "6 edge");
@@ -1008,7 +1009,11 @@ public:
 					feature_extractor.getEigenVectors(major_vector_, middle_vector_, minor_vector_);
 					// Calculate centroid
 					feature_extractor.getMassCenter(mass_center_);
-
+					// Calculate width of object
+					Eigen::Vector3f p1_(min_point_OBB_.x, min_point_OBB_.y, min_point_OBB_.z);
+					Eigen::Vector3f p5_(min_point_OBB_.x, max_point_OBB_.y, min_point_OBB_.z);
+					Eigen::Vector3f distance = p1_ - p5_;
+					cout << "Width of object: " << distance.norm() * 1000 << " mm" <<endl;
 					// Calculate direction of the object 
 					Eigen::Vector2f xAxis(1.0f, 0.0f);
 					Eigen::Vector2f objectAxis;
