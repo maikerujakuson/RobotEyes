@@ -1,14 +1,24 @@
 #include <iostream>
 #include <string>
-int S[1000];
+
+using namespace std;
 
 int main(void)
 {
-	int a = 10;
-	int interval = 1;
+	// Variable for result
+	unsigned char x = 0x00;
+	int y = 1;
 
-	while (interval < a / 3)
-		interval = interval * 3 + 1;
+	// Bit operation of x and y
+	if (y)
+		x = x | 1;
+	else
+		x = x | 0;
 
-	std::cout << interval << std::endl;
+	x = x << 2;
+
+	cout << (int)x << endl;
+
+	return 0;
+
 }

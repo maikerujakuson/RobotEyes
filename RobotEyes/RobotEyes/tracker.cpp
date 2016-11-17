@@ -515,9 +515,9 @@ public:
 				cv::bitwise_not(roi, roi);
 			}
 			cv::circle(image, cv::Point(320, 240), 2, cv::Scalar(255, 255, 0), 1);
-			
+
 			cv::imshow("Camera", image);
-			
+
 
 			cv::waitKey(30);
 		}
@@ -537,7 +537,7 @@ public:
 		pass.setInputCloud(cloud);
 		pass.filter(*cloud_tmp);
 		pass.setFilterFieldName("x");
-		pass.setFilterLimits(-0.5, 0.5);
+		pass.setFilterLimits(-0.5, 0.2);
 		pass.setKeepOrganized(false);
 		pass.setInputCloud(cloud_tmp);
 		pass.filter(result);
@@ -665,7 +665,7 @@ public:
 		proj.setModelType(pcl::SACMODEL_PLANE);
 		// Set input cloud
 		proj.setInputCloud(cloud);
-		
+
 		// Set plane coefficients
 		proj.setModelCoefficients(coefficients);
 		// Get filtered cloud
@@ -809,16 +809,17 @@ public:
 
 		// Cheack readable data is in sock_recv_ 
 		if (FD_ISSET(sock_recv_, &fds_)) {
-			//	Take message from sock to buf_
+			//	Extract message from sock to buf_
 			memset(buf_, 0, sizeof(buf_));
 			recv(sock_recv_, buf_, sizeof(buf_), 0);
 
 			// Parse the message
-			if (strcmp(buf_, "Scanning")==0) {
+			if (strcmp(buf_, "Scanning") == 0) {
 				// Scan objects on a plane
 				cout << "Scanning start..." << endl;
 				scanning_ = true;
-			}else if (strcmp(buf_, "TrackingON") == 0) {
+			}
+			else if (strcmp(buf_, "TrackingON") == 0) {
 				cout << "Tracking start..." << endl;
 				trackingMode = true;
 			}
@@ -827,7 +828,7 @@ public:
 				trackingMode = false;
 			}
 			// Print data
-			printf("%s\n", buf_);
+			//printf("%s\n", buf_);
 		}
 	}
 
@@ -933,11 +934,9 @@ public:
 
 		// Filter point cloud accuired from camera
 		filterPassThrough(cloud, *cloud_pass_);
-
 		// Cheack if request has come from robot
 		//isRequestCome();
 		listen();
-
 		// Mode to calculate the centroid of object
 		if (calc_object_ || scanning_) {
 			// Reset flags
@@ -946,7 +945,7 @@ public:
 
 			// Do statisticalremoval and Set filtered cloud to downsampled cloud
 			statisticalRemoval(cloud_pass_, *cloud_pass_downsampled_, 50, 1.0);
-			
+
 			// Pointer for object's point cloud 
 			CloudPtr target_cloud;
 			// Segmentate plane from downsampled point cloud
@@ -1029,8 +1028,7 @@ public:
 					objectAxis.normalize();
 					// Show the orientation angle of object
 					cout << "Angle of the object: " << acos(objectAxis.dot(xAxis)) * 180.0f / 3.1415 << " degree" << endl;
-					float angle =  acos(objectAxis.dot(xAxis)) * 180.0f / 3.1415;
-
+					float angle = acos(objectAxis.dot(xAxis)) * 180.0f / 3.1415;
 					// Scaling the object vector to fit OBB
 					major_vector_ *= 0.2;
 					middle_vector_ *= 0.2;
@@ -1038,7 +1036,7 @@ public:
 
 					// Sending data
 					memset(buf_, 0, sizeof(buf_));
-					sprintf(buf_, "%f %f %f %f %f %f %f %f", mass_center_.x(), mass_center_.y(), mass_center_.z(),angle,0,0,0,0);
+					sprintf(buf_, "%f %f %f %f %f %f %f %f", mass_center_.x(), mass_center_.y(), mass_center_.z(), angle, 0, 0, 0, 0);
 					sendto(sock_send_,
 						buf_, strlen(buf_), 0, (struct sockaddr *)&addr_send_, sizeof(addr_send_));
 
@@ -1049,7 +1047,7 @@ public:
 				}
 			}
 		}
-		
+
 		new_cloud_ = true;
 		counter_++;
 	}
